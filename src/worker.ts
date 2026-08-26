@@ -199,13 +199,13 @@ function emojisCommand(interaction: DiscordInteraction, emojis: CommunityEmojiMa
   if (selected) {
     if (!COMMUNITY_EMOJI_NAMES.includes(selected as (typeof COMMUNITY_EMOJI_NAMES)[number])) return message("That is not a Seasons of Chaos emoji name.", true);
     const rendered = emojis.get(selected);
-    if (!rendered) return message(`:${selected}: has not been uploaded to this Discord server yet.`, true);
+    if (!rendered) return message(`:${selected}: has not been uploaded to the Discord application yet.`, true);
     return message(`${rendered}  **:${selected}:**`);
   }
   const available = COMMUNITY_EMOJI_NAMES.filter((name) => emojis.has(name));
   const description = available.length
     ? available.map((name) => `${emojis.get(name)} \`:${name}:\``).join("  ")
-    : "No Seasons of Chaos custom emojis are uploaded to this server yet. Unicode fallbacks remain active.";
+    : "No Seasons of Chaos application emojis are uploaded yet. Unicode fallbacks remain active.";
   return message("", false, [{ color: 0x7A3E65, title: `${communityEmoji(emojis, "chaos", "✨")} Community Emoji Drawer`, description, footer: { text: "Use /emojis name: to post one" } }]);
 }
 

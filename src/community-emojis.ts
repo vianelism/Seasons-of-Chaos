@@ -11,18 +11,19 @@ export const COMMUNITY_EMOJI_NAMES = [
   "chaos", "momfuel", "caffeinate", "omgyes", "passport", "stampearned",
   "done", "imfine", "lurking", "justwatching", "yapping", "girlpls",
   "bet", "nope", "dead", "receipts", "waiting", "chaosapproved",
-  "passportchaos", "secretunlocked", "excuseme", "absolutelynot", "sendhelp",
+  "passportchaos", "secretunlocked", "excuse", "absolutelynot", "sendhelp",
   "hereforthedrama", "survived", "gotyou", "overit", "cozy", "chaoscrew",
   "caffeinechaos",
 ] as const;
 
 export async function fetchCommunityEmojis(env: Env, guildId: string): Promise<CommunityEmojiMap> {
   try {
-    const response = await fetch(`https://discord.com/api/v10/guilds/${guildId}/emojis`, {
+    const response = await fetch(`https://discord.com/api/v10/applications/${env.DISCORD_CLIENT_ID}/emojis`, {
       headers: { Authorization: `Bot ${env.DISCORD_TOKEN}` },
     });
     if (!response.ok) return new Map();
-    const items = (await response.json()) as GuildEmoji[];
+    const body = (await response.json()) as { items?: GuildEmoji[] };
+    const items = body.items ?? [];
     return new Map(items.filter((item) => item.name && item.available !== false).map((item) => [item.name!, `<${item.animated ? "a" : ""}:${item.name}:${item.id}>`]));
   } catch (error) {
     console.error(JSON.stringify({ event: "community_emoji_lookup_failed", guildId, error: error instanceof Error ? error.message : String(error) }));

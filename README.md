@@ -49,7 +49,7 @@ After granting **Manage Roles**, run `/setup-rewards` once. The command creates 
 
 ## Community emojis
 
-The bot looks up the server's custom emojis by name at runtime and uses them in passport, stamp, reward, automation, and help messages. Members can run `/emojis` to browse the ones currently uploaded or `/emojis name:` to post one. Autocomplete includes all 30 planned community emoji names. Unicode fallbacks remain in place, so emojis can be uploaded gradually without breaking bot responses or requiring numeric IDs in source control.
+The bot looks up the Discord application's custom emojis by name at runtime and uses them in passport, stamp, reward, automation, and help messages. Members can run `/emojis` to browse the ones currently uploaded or `/emojis name:` to post one. Autocomplete includes all 30 community emoji names. Unicode fallbacks remain in place, so emojis can be changed without breaking bot responses or requiring numeric IDs in source control.
 
 ## Cloudflare resources
 
