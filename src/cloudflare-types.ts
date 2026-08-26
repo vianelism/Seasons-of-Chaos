@@ -14,6 +14,7 @@ export interface DiscordMessage {
 export interface AutomationChannelRow { guild_id: string; kind: AutomationKind; channel_id: string; last_message_id: string | null; }
 export type AutomationKind = "seasonal" | "photos" | "movie-night" | "game-night";
 export interface DiscordRole { id: string; name: string; position: number; permissions: string; managed: boolean; }
+export interface DiscordEmoji { id: string; name: string | null; animated?: boolean; available?: boolean; }
 export interface StampRow {
   slug: string; name: string; emoji: string; description: string; category: StampCategory;
   secret: number; active: number; role_reward_id: string | null; announcement: string | null;

@@ -27,7 +27,9 @@ No always-running computer, gateway connection, Railway service, or Supabase pro
 - `/check-in activity` — self-service activity stamp with no moderator approval
 - `/setup-rewards` — create, connect, and synchronize the four Fall reward roles
 - `/chaos-help` — show a short member-friendly guide
+- `/event-guide` — show the September–January Fall Into Chaos plan and no-pressure promise
 - `/emotes [name]` — browse uploaded community emotes or post one in the channel
+- `/add-emote name` — moderator-only copy of an application emote into the server's normal emote picker
 
 Administrators and members with **Manage Server** can award and revoke stamps. Additional moderator role IDs can be configured in `wrangler.jsonc` as a comma-separated `MODERATOR_ROLE_IDS` value.
 
@@ -49,7 +51,20 @@ After granting **Manage Roles**, run `/setup-rewards` once. The command creates 
 
 ## Community emotes
 
-The bot looks up the Discord application's custom emojis by name at runtime and presents them to members as community emotes. Members can run `/emotes` to browse a five-group drawer (Essentials, Mood Check, Reactions, Maximum Drama, and Survival Kit) or `/emotes name:` to post one. Autocomplete includes all 30 community emote names. Unicode fallbacks remain in place, so application emojis can be changed without breaking bot responses or requiring numeric IDs in source control.
+The bot looks up the Discord application's custom emojis by name at runtime and presents them to members as community emotes. Members can run `/emotes` to browse a five-group drawer (Essentials, Mood Check, Reactions, Maximum Drama, and Survival Kit) or `/emotes name:` to post one. Moderators can use `/add-emote name:` to copy a selected application emote into the current server's normal emote picker for inline use by members. Duplicate names are rejected cleanly, and the application copy remains unchanged. The bot needs Discord's **Create Expressions** permission and an open server emote slot for imports.
+
+Autocomplete includes all 30 community emote names. Unicode fallbacks remain in place, so application emojis can be changed without breaking bot responses or requiring numeric IDs in source control. Bot responses use relevant emotes for passports, stamp awards, rewards, tracking, and help; they are contextual accents rather than random unsolicited messages.
+
+## Fall Into Chaos 2026–27 alignment
+
+The original September–January event remains the creative brief for the first Seasons of Chaos cycle. The year-round structure changes the filing cabinet, not the spirit:
+
+- **Fall 2026** contains September's Cozy Fall Kickoff, October's Halloween Chaos, and November's Discord Friendsgiving.
+- **Winter 2026–27** carries December's Holiday Chaos and January's We Survived wrap-up.
+- The passport never resets; Fall and Winter stamps stack into one lifetime collection and can be viewed by season.
+- `/event-guide` keeps the month-by-month activity menu and the core promise visible inside Discord.
+- The bot automates passport tracking, configured-channel participation, rewards, check-ins, and emote tools. Prompts, bingo, trivia, movie/game nights, superlatives, Secret Santa, and awards remain moderator/community-hosted activities until dedicated features are added.
+- Participation remains free, casual, mostly asynchronous, and optional. Late replies, limited participation, lurking, and returning after an absence are all valid; there are no leaderboards or purchase requirements.
 
 ## Cloudflare resources
 

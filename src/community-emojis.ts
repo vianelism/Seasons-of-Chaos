@@ -42,3 +42,7 @@ export async function fetchCommunityEmojis(env: Env, guildId: string): Promise<C
 export function communityEmoji(emojis: CommunityEmojiMap, name: string, fallback: string): string {
   return emojis.get(name) ?? fallback;
 }
+
+export function communityEmojiId(emojis: CommunityEmojiMap, name: string): string | undefined {
+  return emojis.get(name)?.match(/^<a?:[^:]+:(\d+)>$/)?.[1];
+}

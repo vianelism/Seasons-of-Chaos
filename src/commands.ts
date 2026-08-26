@@ -58,7 +58,14 @@ export const commandData = [
     .setName("chaos-help")
     .setDescription("Show how Seasons of Chaos stamps and rewards work."),
   new SlashCommandBuilder()
+    .setName("event-guide")
+    .setDescription("See the Fall Into Chaos 2026–27 event plan and no-pressure promise."),
+  new SlashCommandBuilder()
     .setName("emotes")
     .setDescription("Browse or post a Seasons of Chaos community emote.")
     .addStringOption((option) => option.setName("name").setDescription("Emote to post; leave blank to browse").setAutocomplete(true)),
+  new SlashCommandBuilder()
+    .setName("add-emote")
+    .setDescription("Add a Seasons of Chaos emote to this server's emote picker.")
+    .addStringOption((option) => option.setName("name").setDescription("Emote to add to this server").setAutocomplete(true).setRequired(true)),
 ].map((command) => command.toJSON());

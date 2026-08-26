@@ -1,9 +1,9 @@
 import { verifyKey } from "discord-interactions";
-import type { AutomationKind, DiscordInteraction, DiscordMember, DiscordOption, DiscordRole, DiscordUser } from "./cloudflare-types.js";
+import type { AutomationKind, DiscordEmoji, DiscordInteraction, DiscordMember, DiscordOption, DiscordRole, DiscordUser } from "./cloudflare-types.js";
 import { D1PassportRepository } from "./d1-repository.js";
 import type { Season, StampDefinition } from "./types.js";
 import { assignRewardRole, discordRequest, runAutomation } from "./automation.js";
-import { COMMUNITY_EMOJI_NAMES, COMMUNITY_EMOTE_GROUPS, communityEmoji, fetchCommunityEmojis, type CommunityEmojiMap } from "./community-emojis.js";
+import { COMMUNITY_EMOJI_NAMES, COMMUNITY_EMOTE_GROUPS, communityEmoji, communityEmojiId, fetchCommunityEmojis, type CommunityEmojiMap } from "./community-emojis.js";
 
 const PING = 1, APPLICATION_COMMAND = 2, AUTOCOMPLETE = 4, CHANNEL_MESSAGE = 4, AUTOCOMPLETE_RESULT = 8, EPHEMERAL = 64;
 const ADMINISTRATOR = 1n << 3n, MANAGE_GUILD = 1n << 5n;
@@ -189,9 +189,28 @@ function chaosHelp(emojis: CommunityEmojiMap): Response {
     { name: "Automatic stamps", value: "The bot checks the configured seasonal, photo, movie-night, and game-night channels once per hour." },
     { name: "Activity check-ins", value: "Use **/check-in** for cozy moments, treats, costumes, gratitude, and other activities the bot cannot identify safely." },
     { name: "Your collection", value: "Use **/passport** to see your stamps, **/stamps** to browse public achievements, and **/rewards** for reward progress." },
-    { name: "Community emotes", value: "Use **/emotes** to browse the uploaded emote drawer or post one by name." },
+    { name: "Community emotes", value: "Use **/emotes** to browse or post one. Moderators can use **/add-emote** to copy one into this server's normal emote picker." },
+    { name: "Fall event plan", value: "Use **/event-guide** for the September–January activities and the official no-pressure promise." },
     { name: "Secret achievements", value: "Some stamps stay hidden until the passport office decides you have caused enough seasonal activity." },
   ], footer: { text: "No leaderboard • No required participation • Every season stacks" } }]);
+}
+
+function eventGuide(emojis: CommunityEmojiMap): Response {
+  return message("", false, [{
+    color: 0xD86C32,
+    title: `${communityEmoji(emojis, "cozy", "🍂")} Fall Into Chaos 2026–27`,
+    description: "The original September–January extravaganza now lives inside **Seasons of Chaos**. Fall covers September–November, Winter carries December–January, and every stamp still stacks into one lifetime passport.",
+    fields: [
+      { name: "🍁 September — Cozy Fall Kickoff", value: "This-or-That, cozy nonsense, photo dumps, Mom Bingo, seasonal debates, and excuses to talk again." },
+      { name: "🎃 October — Halloween Chaos", value: "Daily prompts, pumpkins, costumes, spooky stories, trivia, movie night, and Halloween superlatives." },
+      { name: "🦃 November — Discord Friendsgiving", value: "An imaginary table, recipes, hot takes, survival bingo, gratitude, appreciation, and family-chaos confessions." },
+      { name: "🎄 December — Holiday Chaos", value: "However you celebrate: 12 Days of Discord, movies, trivia, decorations, photos, Guess the Mom, a free digital Secret Santa, and memes." },
+      { name: "❄️ January — We Survived", value: "Pajama-party energy, games, whatever snacks and drinks exist, seasonal awards, and a victory lap for surviving." },
+      { name: `${communityEmoji(emojis, "passportchaos", "🛂")} The passport`, value: "Stamps can come from events, everyday community participation, check-ins, moderator awards, and a few surprises." },
+      { name: "❤️ Most importantly", value: "This is free, casual, and mostly asynchronous. Participate a lot, once, late, or after disappearing for weeks. Lurking is valid. There are no purchases, leaderboards, or participation requirements." },
+    ],
+    footer: { text: "Different seasons • Same chaos • Real life always comes first" },
+  }]);
 }
 
 function emotesCommand(interaction: DiscordInteraction, emojis: CommunityEmojiMap): Response {
@@ -212,13 +231,43 @@ function emotesCommand(interaction: DiscordInteraction, emojis: CommunityEmojiMa
   return message("", false, [{ color: 0x7A3E65, title: `${communityEmoji(emojis, "chaos", "✨")} Community Emote Drawer`, description: "Your official supply of reactions, moods, and completely necessary chaos.", fields, footer: { text: "Use /emotes name: to post one" } }]);
 }
 
+async function addEmote(interaction: DiscordInteraction, env: Env, emojis: CommunityEmojiMap): Promise<Response> {
+  if (!isModerator(interaction, env)) return message("Only moderators can add emotes to the server picker. The emote drawer remains open for browsing. 🗃️", true);
+  if (!interaction.guild_id) return message("Server emotes can only be added from inside a server.", true);
+  const selected = String(option(interaction.data?.options, "name") || "").toLowerCase();
+  if (!COMMUNITY_EMOJI_NAMES.includes(selected as (typeof COMMUNITY_EMOJI_NAMES)[number])) return message("That is not a Seasons of Chaos emote name.", true);
+  const sourceId = communityEmojiId(emojis, selected);
+  if (!sourceId) return message(`:${selected}: is not available in the bot's application emote drawer yet.`, true);
+  try {
+    const existingResponse = await discordRequest(env, `/guilds/${interaction.guild_id}/emojis`);
+    const existing = (await existingResponse.json()) as DiscordEmoji[];
+    const duplicate = existing.find((item) => item.name?.toLowerCase() === selected);
+    if (duplicate) return message(`<:${selected}:${duplicate.id}> is already in this server's emote picker. No duplicate chaos required.`, true);
+
+    const imageResponse = await fetch(`https://cdn.discordapp.com/emojis/${sourceId}.webp?size=128&quality=lossless`);
+    if (!imageResponse.ok) throw new Error(`Application emote download returned ${imageResponse.status}`);
+    const bytes = new Uint8Array(await imageResponse.arrayBuffer());
+    const image = `data:image/webp;base64,${Buffer.from(bytes).toString("base64")}`;
+    const createdResponse = await discordRequest(env, `/guilds/${interaction.guild_id}/emojis`, {
+      method: "POST",
+      headers: { "X-Audit-Log-Reason": encodeURIComponent(`Seasons of Chaos /add-emote requested by ${interaction.member?.user?.id || interaction.user?.id || "unknown"}`) },
+      body: JSON.stringify({ name: selected, image }),
+    });
+    const created = (await createdResponse.json()) as DiscordEmoji;
+    return message(`**EMOTE ADDED ${communityEmoji(emojis, "chaosapproved", "✅")}**\n<:${selected}:${created.id}> is now in this server's emote picker as \`:${selected}:\`.`, true);
+  } catch (error) {
+    console.error(JSON.stringify({ event: "guild_emote_import_failed", guildId: interaction.guild_id, emote: selected, error: error instanceof Error ? error.message : String(error) }));
+    return message("Discord blocked the emote import. Make sure the server has an open emote slot and the bot has **Create Expressions** permission, then try `/add-emote` again.", true);
+  }
+}
+
 async function autocomplete(interaction: DiscordInteraction, repository: D1PassportRepository, env: Env): Promise<Response> {
   const search = String(interaction.data?.options?.find((item) => item.focused)?.value || "").toLowerCase();
   if (["passport", "stamps"].includes(interaction.data?.name || "")) {
     const seasons = await repository.listSeasons();
     return json({ type: AUTOCOMPLETE_RESULT, data: { choices: seasons.filter((season) => `${season.name} ${season.slug}`.toLowerCase().includes(search)).slice(0, 25).map((season) => ({ name: `${season.emoji} ${season.name}`, value: season.slug })) } });
   }
-  if (interaction.data?.name === "emotes") {
+  if (["emotes", "add-emote"].includes(interaction.data?.name || "")) {
     return json({ type: AUTOCOMPLETE_RESULT, data: { choices: COMMUNITY_EMOJI_NAMES.filter((name) => name.includes(search)).slice(0, 25).map((name) => ({ name: `:${name}:`, value: name })) } });
   }
   if (!isModerator(interaction, env)) return json({ type: AUTOCOMPLETE_RESULT, data: { choices: [] } });
@@ -248,7 +297,9 @@ async function handleInteraction(interaction: DiscordInteraction, env: Env): Pro
     case "check-in": return checkIn(interaction, repository, env, emojis);
     case "setup-rewards": return setupRewards(interaction, repository, env);
     case "chaos-help": return chaosHelp(emojis);
+    case "event-guide": return eventGuide(emojis);
     case "emotes": return emotesCommand(interaction, emojis);
+    case "add-emote": return addEmote(interaction, env, emojis);
     default: return message("The passport office cannot find that form.", true);
   }
 }
