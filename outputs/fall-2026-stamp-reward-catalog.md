@@ -76,7 +76,7 @@ These remain lifetime-global rather than Fall-specific. They appear in the lifet
 
 ## Automation model
 
-Fall 2026 is automation-first. The bot scans configured channels every five minutes and awards objective participation, photo, movie-night, and game-night stamps. Members use `/check-in` for activities that cannot be safely inferred from a Discord message. Secret activity-day achievements and reward thresholds unlock automatically. `/award` and `/revoke` remain moderator fallback tools.
+Fall 2026 is automation-first. The bot scans configured channels once per hour and awards objective participation, photo, movie-night, and game-night stamps. Members use `/check-in` for activities that cannot be safely inferred from a Discord message. Secret activity-day achievements and reward thresholds unlock automatically. `/award` and `/revoke` remain moderator fallback tools.
 
 ## Moderator rules
 

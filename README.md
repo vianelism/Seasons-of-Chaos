@@ -30,7 +30,7 @@ Administrators and members with **Manage Server** can award and revoke stamps. A
 
 ## Automatic Fall 2026 tracking
 
-The Worker checks configured channels every five minutes. Use `/setup-channel` once for each channel type you use. A single Discord channel may be selected for more than one type.
+The Worker checks configured channels once per hour. Use `/setup-channel` once for each channel type you use. A single Discord channel may be selected for more than one type.
 
 - Seasonal conversation awards the monthly participation stamps.
 - Photo sharing awards `Pics or It Didn't Happen` when a message contains an attachment.

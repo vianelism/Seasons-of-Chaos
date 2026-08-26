@@ -111,7 +111,7 @@ async function setupChannel(interaction: DiscordInteraction, repository: D1Passp
   const channelId = String(option(interaction.data?.options, "channel") || "");
   if (!interaction.guild_id || !AUTOMATION_KINDS.has(kind) || !channelId) return message("I could not understand that channel setup.", true);
   await repository.configureChannel(interaction.guild_id, kind, channelId, interaction.member?.user?.id || interaction.user?.id || "unknown");
-  return message(`✅ Automatic **${kind}** tracking is now watching <#${channelId}>. New activity is checked every five minutes.`, true);
+  return message(`✅ Automatic **${kind}** tracking is now watching <#${channelId}>. New activity is checked once per hour.`, true);
 }
 
 async function automationStatus(interaction: DiscordInteraction, repository: D1PassportRepository): Promise<Response> {
@@ -121,7 +121,7 @@ async function automationStatus(interaction: DiscordInteraction, repository: D1P
     const found = configured.find((item) => item.kind === kind);
     return `${found ? "✅" : "⬜"} **${kind}** — ${found ? `<#${found.channel_id}>` : "not configured"}`;
   });
-  return message("", false, [{ color: 0x4E7A5B, title: "⚙️ Automatic Stamp Tracking", description: `${lines.join("\n")}\n\nThe bot checks configured channels every five minutes. Members can use **/check-in** for activities a message cannot identify safely.` }]);
+  return message("", false, [{ color: 0x4E7A5B, title: "⚙️ Automatic Stamp Tracking", description: `${lines.join("\n")}\n\nThe bot checks configured channels once per hour. Members can use **/check-in** for activities a message cannot identify safely.` }]);
 }
 
 async function checkIn(interaction: DiscordInteraction, repository: D1PassportRepository): Promise<Response> {
