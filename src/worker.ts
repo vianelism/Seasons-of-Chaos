@@ -200,7 +200,7 @@ function emotesCommand(interaction: DiscordInteraction, emojis: CommunityEmojiMa
     if (!COMMUNITY_EMOJI_NAMES.includes(selected as (typeof COMMUNITY_EMOJI_NAMES)[number])) return message("That is not a Seasons of Chaos emote name.", true);
     const rendered = emojis.get(selected);
     if (!rendered) return message(`:${selected}: has not been uploaded to the Discord application yet.`, true);
-    return message(`${rendered}  **:${selected}:**`);
+    return message(rendered);
   }
   const available = COMMUNITY_EMOJI_NAMES.filter((name) => emojis.has(name));
   if (!available.length) return message("", false, [{ color: 0x7A3E65, title: "✨ Community Emote Drawer", description: "No Seasons of Chaos application emojis are uploaded yet. Unicode fallbacks remain active." }]);
