@@ -46,6 +46,10 @@ The bot needs **View Channel**, **Read Message History**, and **Send Messages** 
 
 After granting **Manage Roles**, run `/setup-rewards` once. The command creates zero-permission cosmetic roles for First Leaves, Certified Cozy, Fall Main Character, and Fall Chaos Legend, connects them to D1, and synchronizes qualifying existing members.
 
+## Community emojis
+
+The bot looks up the server's custom emojis by name at runtime and uses them in passport, stamp, reward, automation, and help messages. Current supported presentation names include `passport`, `passportchaos`, `stampearned`, `secretunlocked`, `chaosapproved`, `chaos`, `done`, `lurking`, `justwatching`, and `chaoscrew`. Unicode fallbacks remain in place, so emojis can be uploaded gradually without breaking bot responses or requiring numeric IDs in source control.
+
 ## Cloudflare resources
 
 - Worker: `seasons-of-chaos`

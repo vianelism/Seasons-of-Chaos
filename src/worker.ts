@@ -3,6 +3,7 @@ import type { AutomationKind, DiscordInteraction, DiscordMember, DiscordOption, 
 import { D1PassportRepository } from "./d1-repository.js";
 import type { Season, StampDefinition } from "./types.js";
 import { assignRewardRole, discordRequest, runAutomation } from "./automation.js";
+import { communityEmoji, fetchCommunityEmojis, type CommunityEmojiMap } from "./community-emojis.js";
 
 const PING = 1, APPLICATION_COMMAND = 2, AUTOCOMPLETE = 4, CHANNEL_MESSAGE = 4, AUTOCOMPLETE_RESULT = 8, EPHEMERAL = 64;
 const ADMINISTRATOR = 1n << 3n, MANAGE_GUILD = 1n << 5n;
@@ -33,7 +34,7 @@ function isDiscordInteraction(value: unknown): value is DiscordInteraction {
   return typeof (value as { type?: unknown }).type === "number";
 }
 
-async function passport(interaction: DiscordInteraction, repository: D1PassportRepository): Promise<Response> {
+async function passport(interaction: DiscordInteraction, repository: D1PassportRepository, emojis: CommunityEmojiMap): Promise<Response> {
   const seasonSlug = String(option(interaction.data?.options, "season") || "") || undefined;
   const season = seasonSlug ? await repository.findSeason(seasonSlug) : undefined;
   if (seasonSlug && !season) return message("That season could not be found.", true);
@@ -48,17 +49,17 @@ async function passport(interaction: DiscordInteraction, repository: D1PassportR
   const earnedText = earned.length ? earned.map((stamp) => `${stamp.emoji} **${stamp.name}**`).join("\n") : "No stamps yet—and absolutely no pressure. The passport office remains open. 🍁";
   const lockedText = [...publicUnearned.map((stamp) => `🔒 ${stamp.name}`), ...(secretCount ? [`❔ ${secretCount} secret achievement${secretCount === 1 ? "" : "s"}`] : [])].join("\n") || "Every active stamp has been found. Icon behavior. ✨";
   const scope = season ? `${season.emoji} ${season.name}` : "🌎 Lifetime Passport";
-  return message("", false, [{ color: 0xD86C32, author: { name: `${displayName(user, member)}'s Seasons of Chaos Passport`, icon_url: avatarUrl(user) }, description: `**${scope}**\n${progressBar(earned.length, active.length)}`, fields: [{ name: `Stamps earned (${earned.length})`, value: earnedText.slice(0, 1024) }, { name: "Still out there", value: lockedText.slice(0, 1024) }], footer: { text: season ? "Seasonal view • Lifetime stamps never reset" : "Every season stacks • Participation is delightfully optional" } }]);
+  return message("", false, [{ color: 0xD86C32, author: { name: `${communityEmoji(emojis, "passport", "🛂")} ${displayName(user, member)}'s Seasons of Chaos Passport`, icon_url: avatarUrl(user) }, description: `**${scope}**\n${progressBar(earned.length, active.length)}`, fields: [{ name: `Stamps earned (${earned.length})`, value: earnedText.slice(0, 1024) }, { name: "Still out there", value: lockedText.slice(0, 1024) }], footer: { text: season ? "Seasonal view • Lifetime stamps never reset" : "Every season stacks • Participation is delightfully optional" } }]);
 }
 
-async function stamps(interaction: DiscordInteraction, repository: D1PassportRepository): Promise<Response> {
+async function stamps(interaction: DiscordInteraction, repository: D1PassportRepository, emojis: CommunityEmojiMap): Promise<Response> {
   const seasonSlug = String(option(interaction.data?.options, "season") || "") || undefined;
   const season = seasonSlug ? await repository.findSeason(seasonSlug) : undefined;
   if (seasonSlug && !season) return message("That season could not be found.", true);
   const active = await repository.listActiveStamps(seasonSlug);
   const publicStamps = active.filter((stamp) => !stamp.secret);
   const secretCount = active.filter((stamp) => stamp.secret).length;
-  return message("", false, [{ color: 0x7A3E65, title: `${season?.emoji || "🛂"} ${season?.name || "Seasons of Chaos"} Stamp Catalog`, description: "Collect achievements at your own pace. Every season stacks, and this is still not homework.", fields: groupStamps(publicStamps), footer: { text: `${secretCount} secret achievement${secretCount === 1 ? " is" : "s are"} also lurking…` } }]);
+  return message("", false, [{ color: 0x7A3E65, title: `${season?.emoji || communityEmoji(emojis, "passportchaos", "🛂")} ${season?.name || "Seasons of Chaos"} Stamp Catalog`, description: "Collect achievements at your own pace. Every season stacks, and this is still not homework.", fields: groupStamps(publicStamps), footer: { text: `${communityEmoji(emojis, "lurking", "👀")} ${secretCount} secret achievement${secretCount === 1 ? " is" : "s are"} also lurking…` } }]);
 }
 
 function statusLabel(season: Season): string {
@@ -70,17 +71,17 @@ async function seasons(repository: D1PassportRepository): Promise<Response> {
   return message("", false, [{ color: 0x4E7A5B, title: "🌦️ Seasons of Chaos", description: "One lifetime passport. Every season adds another collection—nothing resets.", fields: items.map((season) => ({ name: `${season.emoji} ${season.name} • ${statusLabel(season)}`, value: `${season.description}\n${season.startsOn} → ${season.endsOn}` })), footer: { text: "Use /passport season: to revisit any collection" } }]);
 }
 
-async function rewards(interaction: DiscordInteraction, repository: D1PassportRepository): Promise<Response> {
+async function rewards(interaction: DiscordInteraction, repository: D1PassportRepository, emojis: CommunityEmojiMap): Promise<Response> {
   const targetId = String(option(interaction.data?.options, "user") || interaction.member?.user?.id || interaction.user?.id);
   const user = interaction.data?.resolved?.users?.[targetId] || interaction.member?.user || interaction.user;
   const member = interaction.data?.resolved?.members?.[targetId] || (user?.id === interaction.member?.user?.id ? interaction.member : undefined);
   if (!interaction.guild_id || !user) return message("Rewards only work inside a server.", true);
   const definitions = await repository.listRewards();
   const progress = await Promise.all(definitions.map(async (reward) => ({ reward, count: (await repository.getEarned(interaction.guild_id!, user.id, reward.seasonSlug)).length })));
-  return message("", false, [{ color: 0xD6A537, title: `🎁 ${displayName(user, member)}'s Reward Progress`, description: "Seasonal and lifetime rewards stack alongside the passport.", fields: progress.map(({ reward, count }) => ({ name: `${count >= reward.threshold ? "✅" : "🔒"} ${reward.emoji} ${reward.name}`, value: `${reward.description}\n${Math.min(count, reward.threshold)}/${reward.threshold} stamps${reward.seasonSlug ? " in this collection" : " lifetime"}` })), footer: { text: "Rewards can grow over time without resetting passport progress" } }]);
+  return message("", false, [{ color: 0xD6A537, title: `${communityEmoji(emojis, "chaosapproved", "🎁")} ${displayName(user, member)}'s Reward Progress`, description: "Seasonal and lifetime rewards stack alongside the passport.", fields: progress.map(({ reward, count }) => ({ name: `${count >= reward.threshold ? communityEmoji(emojis, "done", "✅") : "🔒"} ${reward.emoji} ${reward.name}`, value: `${reward.description}\n${Math.min(count, reward.threshold)}/${reward.threshold} stamps${reward.seasonSlug ? " in this collection" : " lifetime"}` })), footer: { text: "Rewards can grow over time without resetting passport progress" } }]);
 }
 
-async function award(interaction: DiscordInteraction, repository: D1PassportRepository, env: Env): Promise<Response> {
+async function award(interaction: DiscordInteraction, repository: D1PassportRepository, env: Env, emojis: CommunityEmojiMap): Promise<Response> {
   if (!isModerator(interaction, env)) return message("The passport office denied that paperwork. This command is for moderators only. 🗃️", true);
   const targetId = String(option(interaction.data?.options, "user")), slug = String(option(interaction.data?.options, "stamp"));
   const user = interaction.data?.resolved?.users?.[targetId], member = interaction.data?.resolved?.members?.[targetId];
@@ -91,8 +92,8 @@ async function award(interaction: DiscordInteraction, repository: D1PassportRepo
   const unlocked = await repository.claimUnlockedRewards(interaction.guild_id, user.id);
   for (const reward of unlocked) await assignRewardRole(env, interaction.guild_id, user.id, reward);
   const announce = option(interaction.data?.options, "announce") !== false;
-  const rewardText = unlocked.length ? `\n\n**REWARD UNLOCKED 🎁** ${unlocked.map((reward) => `${reward.emoji} **${reward.name}**`).join(", ")}` : "";
-  return message(`**STAMP EARNED 🎉**\n${stamp.emoji} <@${user.id}> earned the **${stamp.name}** passport stamp!${stamp.announcement ? `\n*${stamp.announcement}*` : "\n*The passport office has approved this nonsense.*"}${rewardText}`, !announce);
+  const rewardText = unlocked.length ? `\n\n**REWARD UNLOCKED ${communityEmoji(emojis, "secretunlocked", "🎁")}** ${unlocked.map((reward) => `${reward.emoji} **${reward.name}**`).join(", ")}` : "";
+  return message(`**STAMP EARNED ${communityEmoji(emojis, "stampearned", "🎉")}**\n${stamp.emoji} <@${user.id}> earned the **${stamp.name}** passport stamp!${stamp.announcement ? `\n*${stamp.announcement}*` : `\n*${communityEmoji(emojis, "chaosapproved", "✅")} The passport office has approved this nonsense.*`}${rewardText}`, !announce);
 }
 
 async function revoke(interaction: DiscordInteraction, repository: D1PassportRepository, env: Env): Promise<Response> {
@@ -117,17 +118,17 @@ async function setupChannel(interaction: DiscordInteraction, repository: D1Passp
   return message(`✅ Automatic **${kind}** tracking is now watching <#${channelId}>. New activity is checked once per hour.`, true);
 }
 
-async function automationStatus(interaction: DiscordInteraction, repository: D1PassportRepository): Promise<Response> {
+async function automationStatus(interaction: DiscordInteraction, repository: D1PassportRepository, emojis: CommunityEmojiMap): Promise<Response> {
   if (!interaction.guild_id) return message("Automation status only works inside a server.", true);
   const configured = await repository.listAutomationChannels(interaction.guild_id);
   const lines = (["seasonal", "photos", "movie-night", "game-night"] as AutomationKind[]).map((kind) => {
     const found = configured.find((item) => item.kind === kind);
     return `${found ? "✅" : "⬜"} **${kind}** — ${found ? `<#${found.channel_id}>` : "not configured"}`;
   });
-  return message("", false, [{ color: 0x4E7A5B, title: "⚙️ Automatic Stamp Tracking", description: `${lines.join("\n")}\n\nThe bot checks configured channels once per hour. Members can use **/check-in** for activities a message cannot identify safely.` }]);
+  return message("", false, [{ color: 0x4E7A5B, title: `${communityEmoji(emojis, "justwatching", "⚙️")} Automatic Stamp Tracking`, description: `${lines.join("\n")}\n\nThe bot checks configured channels once per hour. Members can use **/check-in** for activities a message cannot identify safely.` }]);
 }
 
-async function checkIn(interaction: DiscordInteraction, repository: D1PassportRepository, env: Env): Promise<Response> {
+async function checkIn(interaction: DiscordInteraction, repository: D1PassportRepository, env: Env, emojis: CommunityEmojiMap): Promise<Response> {
   const slug = String(option(interaction.data?.options, "activity") || "");
   const user = interaction.member?.user || interaction.user;
   if (!interaction.guild_id || !user || !CHECK_IN_SLUGS.has(slug)) return message("That check-in could not be processed.", true);
@@ -137,8 +138,8 @@ async function checkIn(interaction: DiscordInteraction, repository: D1PassportRe
   if (!created) return message(`${stamp.emoji} You already have **${stamp.name}**. No duplicate paperwork required.`, true);
   const rewards = await repository.claimUnlockedRewards(interaction.guild_id, user.id);
   for (const reward of rewards) await assignRewardRole(env, interaction.guild_id, user.id, reward);
-  const rewardText = rewards.length ? `\n\n**REWARD UNLOCKED 🎁** ${rewards.map((reward) => `${reward.emoji} **${reward.name}**`).join(", ")}` : "";
-  return message(`**STAMP EARNED 🎉**\n${stamp.emoji} <@${user.id}> earned **${stamp.name}**!\n*${stamp.announcement || "Officially documented for absolutely no important reason."}*${rewardText}`);
+  const rewardText = rewards.length ? `\n\n**REWARD UNLOCKED ${communityEmoji(emojis, "secretunlocked", "🎁")}** ${rewards.map((reward) => `${reward.emoji} **${reward.name}**`).join(", ")}` : "";
+  return message(`**STAMP EARNED ${communityEmoji(emojis, "stampearned", "🎉")}**\n${stamp.emoji} <@${user.id}> earned **${stamp.name}**!\n*${communityEmoji(emojis, "chaosapproved", "✅")} ${stamp.announcement || "Officially documented for absolutely no important reason."}*${rewardText}`);
 }
 
 const FALL_REWARD_ROLES: Record<string, { name: string; color: number }> = {
@@ -183,8 +184,8 @@ async function setupRewards(interaction: DiscordInteraction, repository: D1Passp
   }
 }
 
-function chaosHelp(): Response {
-  return message("", false, [{ color: 0xD86C32, title: "🍂 Seasons of Chaos — Quick Guide", description: "Join when you can. This is community fun, not homework.", fields: [
+function chaosHelp(emojis: CommunityEmojiMap): Response {
+  return message("", false, [{ color: 0xD86C32, title: `${communityEmoji(emojis, "chaoscrew", "🍂")} Seasons of Chaos — Quick Guide`, description: "Join when you can. This is community fun, not homework.", fields: [
     { name: "Automatic stamps", value: "The bot checks the configured seasonal, photo, movie-night, and game-night channels once per hour." },
     { name: "Activity check-ins", value: "Use **/check-in** for cozy moments, treats, costumes, gratitude, and other activities the bot cannot identify safely." },
     { name: "Your collection", value: "Use **/passport** to see your stamps, **/stamps** to browse public achievements, and **/rewards** for reward progress." },
@@ -212,18 +213,19 @@ async function handleInteraction(interaction: DiscordInteraction, env: Env): Pro
   const repository = new D1PassportRepository(env.DB);
   if (interaction.type === AUTOCOMPLETE) return autocomplete(interaction, repository, env);
   if (interaction.type !== APPLICATION_COMMAND) return message("That interaction is not supported.", true);
+  const emojis = interaction.guild_id ? await fetchCommunityEmojis(env, interaction.guild_id) : new Map();
   switch (interaction.data?.name) {
-    case "passport": return passport(interaction, repository);
-    case "stamps": return stamps(interaction, repository);
+    case "passport": return passport(interaction, repository, emojis);
+    case "stamps": return stamps(interaction, repository, emojis);
     case "seasons": return seasons(repository);
-    case "rewards": return rewards(interaction, repository);
-    case "award": return award(interaction, repository, env);
+    case "rewards": return rewards(interaction, repository, emojis);
+    case "award": return award(interaction, repository, env, emojis);
     case "revoke": return revoke(interaction, repository, env);
     case "setup-channel": return setupChannel(interaction, repository, env);
-    case "automation-status": return automationStatus(interaction, repository);
-    case "check-in": return checkIn(interaction, repository, env);
+    case "automation-status": return automationStatus(interaction, repository, emojis);
+    case "check-in": return checkIn(interaction, repository, env, emojis);
     case "setup-rewards": return setupRewards(interaction, repository, env);
-    case "chaos-help": return chaosHelp();
+    case "chaos-help": return chaosHelp(emojis);
     default: return message("The passport office cannot find that form.", true);
   }
 }

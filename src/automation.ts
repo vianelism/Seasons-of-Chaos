@@ -1,6 +1,7 @@
 import type { AutomationKind, DiscordMessage } from "./cloudflare-types.js";
 import { D1PassportRepository } from "./d1-repository.js";
 import type { Reward, StampDefinition } from "./types.js";
+import { communityEmoji, fetchCommunityEmojis, type CommunityEmojiMap } from "./community-emojis.js";
 
 const API = "https://discord.com/api/v10";
 
@@ -33,20 +34,20 @@ export function secretActivitySlugs(month: string, monthDays: number, activeMont
   return slugs;
 }
 
-async function announceStamp(env: Env, channelId: string, userId: string, stamp: StampDefinition): Promise<void> {
-  await discordRequest(env, `/channels/${channelId}/messages`, { method: "POST", body: JSON.stringify({ content: `**STAMP EARNED 🎉**\n${stamp.emoji} <@${userId}> earned **${stamp.name}**!\n*${stamp.announcement || "The passport office has approved this nonsense."}*` }) });
+async function announceStamp(env: Env, channelId: string, userId: string, stamp: StampDefinition, emojis: CommunityEmojiMap): Promise<void> {
+  await discordRequest(env, `/channels/${channelId}/messages`, { method: "POST", body: JSON.stringify({ content: `**STAMP EARNED ${communityEmoji(emojis, "stampearned", "🎉")}**\n${stamp.emoji} <@${userId}> earned **${stamp.name}**!\n*${communityEmoji(emojis, "chaosapproved", "✅")} ${stamp.announcement || "The passport office has approved this nonsense."}*` }) });
 }
 
 export async function assignRewardRole(env: Env, guildId: string, userId: string, reward: Reward): Promise<void> {
   if (reward.roleRewardId) await discordRequest(env, `/guilds/${guildId}/members/${userId}/roles/${reward.roleRewardId}`, { method: "PUT" });
 }
 
-async function announceReward(env: Env, guildId: string, channelId: string, userId: string, reward: Reward): Promise<void> {
+async function announceReward(env: Env, guildId: string, channelId: string, userId: string, reward: Reward, emojis: CommunityEmojiMap): Promise<void> {
   await assignRewardRole(env, guildId, userId, reward);
-  await discordRequest(env, `/channels/${channelId}/messages`, { method: "POST", body: JSON.stringify({ content: `**REWARD UNLOCKED 🎁**\n${reward.emoji} <@${userId}> unlocked **${reward.name}**!\n*Mom chaos recognized. Completely prestigious.*` }) });
+  await discordRequest(env, `/channels/${channelId}/messages`, { method: "POST", body: JSON.stringify({ content: `**REWARD UNLOCKED ${communityEmoji(emojis, "secretunlocked", "🎁")}**\n${reward.emoji} <@${userId}> unlocked **${reward.name}**!\n*${communityEmoji(emojis, "chaos", "✨")} Mom chaos recognized. Completely prestigious.*` }) });
 }
 
-async function processMessage(env: Env, repository: D1PassportRepository, guildId: string, kind: AutomationKind, announcementChannelId: string, item: DiscordMessage): Promise<number> {
+async function processMessage(env: Env, repository: D1PassportRepository, guildId: string, kind: AutomationKind, announcementChannelId: string, item: DiscordMessage, emojis: CommunityEmojiMap): Promise<number> {
   if (item.author.bot) return 0;
   let awarded = 0;
   const activity = await repository.recordActivityDay(guildId, item.author.id, item.timestamp);
@@ -57,9 +58,9 @@ async function processMessage(env: Env, repository: D1PassportRepository, guildI
     const stamp = await repository.findActiveStamp(slug);
     if (!stamp) continue;
     const created = await repository.award(guildId, item.author.id, item.member?.nick || item.author.global_name || item.author.username, slug, "automation");
-    if (created) { awarded += 1; await announceStamp(env, announcementChannelId, item.author.id, stamp); }
+    if (created) { awarded += 1; await announceStamp(env, announcementChannelId, item.author.id, stamp, emojis); }
   }
-  for (const reward of await repository.claimUnlockedRewards(guildId, item.author.id)) await announceReward(env, guildId, announcementChannelId, item.author.id, reward);
+  for (const reward of await repository.claimUnlockedRewards(guildId, item.author.id)) await announceReward(env, guildId, announcementChannelId, item.author.id, reward, emojis);
   return awarded;
 }
 
@@ -68,6 +69,8 @@ export async function runAutomation(env: Env): Promise<void> {
   const repository = new D1PassportRepository(env.DB);
   const channels = await repository.listAutomationChannels();
   const announcementByGuild = new Map(channels.filter((row) => row.kind === "seasonal").map((row) => [row.guild_id, row.channel_id]));
+  const emojiByGuild = new Map<string, CommunityEmojiMap>();
+  for (const guildId of new Set(channels.map((row) => row.guild_id))) emojiByGuild.set(guildId, await fetchCommunityEmojis(env, guildId));
   let awards = 0;
   for (const channel of channels) {
     if (!channel.last_message_id) {
@@ -85,7 +88,7 @@ export async function runAutomation(env: Env): Promise<void> {
       const response = await discordRequest(env, `/channels/${channel.channel_id}/messages?${query}`);
       const messages = (await response.json()) as DiscordMessage[];
       messages.sort((a, b) => a.timestamp.localeCompare(b.timestamp));
-      for (const item of messages) awards += await processMessage(env, repository, channel.guild_id, channel.kind, announcementByGuild.get(channel.guild_id) || channel.channel_id, item);
+      for (const item of messages) awards += await processMessage(env, repository, channel.guild_id, channel.kind, announcementByGuild.get(channel.guild_id) || channel.channel_id, item, emojiByGuild.get(channel.guild_id) ?? new Map());
       const newest = messages.at(-1);
       if (newest) await repository.updateChannelCursor(channel.guild_id, channel.kind, newest.id);
     } catch (error) {
