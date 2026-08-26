@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="theme-color" content="#17152b"><title>Project Guide · Seasons of Chaos</title><link rel="stylesheet" href="legal/legal.css"></head>
+<body class="legal-page doc-page">
+<div class="season-glow glow-one"></div><div class="season-glow glow-two"></div>
+<main class="legal-wrap">
+  <div class="back-row"><a href="index.html">← Seasons of Chaos</a><a href="https://github.com/vianelism/Seasons-of-Chaos">View repository ↗</a></div>
+  <section class="legal-hero doc-hero"><span class="mini-label">PROJECT GUIDE</span><h1>Seasons of Chaos</h1><p>A playful, year-round seasonal passport app for a Discord community. Every stamp stacks into one lifetime passport, while members can filter their collection by Fall, Winter, Spring, or Summer.</p></section>
+  <div class="doc-grid">
+    <aside class="doc-nav"><a href="#architecture">Architecture</a><a href="#commands">Commands</a><a href="#tracking">Automatic Tracking</a><a href="#cloudflare">Cloudflare</a><a href="#setup">Local Setup</a><a href="#deploy">Deploy</a><a href="#stamps">Stamp Catalog</a><a href="#security">Secrets</a><a href="#structure">Project Structure</a></aside>
+    <article class="legal-card doc-card">
+      <h2 id="architecture">Live architecture</h2><pre><code>Discord slash command
+  → Cloudflare Worker (signed HTTP interaction)
+  → Cloudflare D1 (users, stamps, earned stamps)
+  → Discord embed or confirmation</code></pre><p>No always-running computer, gateway connection, Railway service, or Supabase project is required.</p>
+
+      <h2 id="commands">Commands</h2><ul><li><code>/passport [user]</code> — view an embed passport, earned stamps, progress, and locked achievements</li><li><code>/passport [user] [season]</code> — optionally filter the lifetime passport by season</li><li><code>/stamps [season]</code> — browse active public stamps without exposing secret achievements</li><li><code>/seasons</code> — browse current, upcoming, and archived seasonal collections</li><li><code>/rewards [user]</code> — view seasonal and lifetime reward progress</li><li><code>/award user stamp [announce]</code> — moderator-only award with duplicate prevention</li><li><code>/revoke user stamp</code> — moderator-only correction</li><li><code>/setup-channel kind channel</code> — moderator-only setup for automatic seasonal, photo, movie-night, and game-night tracking</li><li><code>/automation-status</code> — show which channels are being watched</li><li><code>/check-in activity</code> — self-service activity stamp with no moderator approval</li><li><code>/setup-rewards</code> — create, connect, and synchronize Fall reward roles</li><li><code>/chaos-help</code> — show a short member-friendly guide</li></ul><p>Administrators and members with <strong>Manage Server</strong> can award and revoke stamps. Additional moderator role IDs can be configured in <code>wrangler.jsonc</code>.</p>
+
+      <h2 id="tracking">Automatic Fall 2026 tracking</h2><p>The Worker checks configured channels once per hour. A single Discord channel may be selected for more than one tracking type.</p><ul><li>Seasonal conversation awards monthly participation stamps.</li><li>Photo sharing awards <strong>“Pics or It Didn't Happen”</strong> when a message contains an attachment.</li><li>Movie-night and game-night activity awards their event stamps.</li><li>Activity on several different days unlocks rule-based secret achievements.</li><li>Participating across September, October, and November unlocks <strong>“I Was Here.”</strong></li><li><code>/check-in</code> handles activities the bot cannot infer reliably, such as a costume, seasonal treat, or gratitude post.</li><li>Reward thresholds are evaluated immediately after every automatic or self-service award.</li></ul><p>The bot needs <strong>View Channel</strong>, <strong>Read Message History</strong>, and <strong>Send Messages</strong> in tracked channels. Reward roles also require <strong>Manage Roles</strong>.</p>
+
+      <h2 id="cloudflare">Cloudflare resources</h2><ul><li>Worker: <code>seasons-of-chaos</code></li><li>D1 binding: <code>DB</code></li><li>D1 database: <code>fall-into-chaos</code> <em>(original internal resource name; shared by every season)</em></li><li>Production URL: <code>https://seasons-of-chaos.v-martinez1.workers.dev</code></li><li>Region: Eastern North America</li><li>Secrets: <code>DISCORD_PUBLIC_KEY</code>, <code>DISCORD_TOKEN</code></li></ul><p>The Discord application's <strong>Interactions Endpoint URL</strong> must be the production Worker URL.</p>
+
+      <h2 id="setup">Local setup</h2><p>Requirements: Node.js 20+, an authenticated Cloudflare account, and a Discord application.</p><pre><code>npm install
+cp .env.example .env
+npm run db:migrate:local
+npm run dev</code></pre><p>Enter the Discord development values in <code>.env</code>. Never commit that file. Normal Discord testing should use the deployed Worker because Discord cannot reach localhost directly.</p>
+
+      <h2 id="deploy">Deploy changes</h2><pre><code>npm run check
+npm run deploy</code></pre><p>After adding a migration:</p><pre><code>npm run db:migrate:remote
+npm run deploy</code></pre><p>After changing slash-command definitions:</p><pre><code>npm run deploy:commands</code></pre><p>After changing <code>wrangler.jsonc</code>:</p><pre><code>npx wrangler types worker-configuration.d.ts
+npx wrangler types --check</code></pre>
+
+      <h2 id="stamps">Stamp catalog</h2><p>The initial catalog lives in <code>migrations/0001_initial.sql</code>. Seasons, stamp mappings, and rewards are introduced in <code>migrations/0002_seasons_and_rewards.sql</code>. The catalog in <code>src/config/stamps.ts</code> remains a readable source list, but D1 is authoritative at runtime.</p><p>Stamps without a <code>stamp_seasons</code> mapping are lifetime-global. Seasonal stamps can be filtered in <code>/passport</code> without changing or resetting lifetime award history.</p><p>For future changes, create a new numbered migration instead of editing one that has already run:</p><pre><code>npx wrangler d1 migrations create DB add-new-stamps</code></pre><p>Use a stable slug for every stamp. Changing a slug creates a different achievement and can disconnect existing award history.</p>
+
+      <h2 id="security">Secrets and verification</h2><pre><code>npx wrangler secret put DISCORD_PUBLIC_KEY</code></pre><p>Do not place secrets in <code>wrangler.jsonc</code>, source files, or GitHub. The production Worker uses the bot token to scan configured channels and announce automatic awards.</p><pre><code>curl https://seasons-of-chaos.v-martinez1.workers.dev
+npx wrangler d1 execute DB --remote --command "SELECT COUNT(*) FROM stamps"
+npx wrangler secret list
+npx wrangler tail seasons-of-chaos</code></pre><p>Cloudflare observability is enabled with structured error logging. D1 enforces unique guild/user/stamp awards, preventing duplicate awards even across simultaneous requests.</p>
+
+      <h2 id="structure">Project structure</h2><pre><code>migrations/                  Versioned D1 schema, seasons, rewards, and stamps
+src/worker.ts                Signed Discord interaction handler
+src/d1-repository.ts         D1 passport queries
+src/cloudflare-types.ts      Discord payload and database row types
+src/commands.ts              Slash-command definitions
+src/deploy-commands.ts       Discord command registration
+worker-configuration.d.ts    Generated Cloudflare types
+wrangler.jsonc               Worker, D1, and observability config</code></pre>
+
+      <h2>GitHub</h2><p>GitHub is used for source backup and deployment history. Before publishing, confirm <code>.env</code>, local D1 state, and SQLite files remain ignored.</p><p><a href="https://github.com/vianelism/Seasons-of-Chaos#readme">Open the repository README ↗</a></p>
+      <div class="legal-footer"><strong>Craftsgineered</strong><br>Different seasons. Same chaos.</div>
+    </article>
+  </div>
+</main>
+</body></html>
