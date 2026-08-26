@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { COMMUNITY_EMOJI_NAMES, communityEmoji } from "./community-emojis.js";
+import { COMMUNITY_EMOJI_NAMES, COMMUNITY_EMOTE_GROUPS, communityEmoji } from "./community-emojis.js";
 
 describe("communityEmoji", () => {
   it("uses an uploaded Discord emoji mention when available", () => {
@@ -14,5 +14,11 @@ describe("communityEmoji", () => {
   it("keeps all 30 planned names unique for command autocomplete", () => {
     expect(COMMUNITY_EMOJI_NAMES).toHaveLength(30);
     expect(new Set(COMMUNITY_EMOJI_NAMES).size).toBe(30);
+  });
+
+  it("organizes every emote into one drawer group", () => {
+    const grouped = COMMUNITY_EMOTE_GROUPS.flatMap((group) => group.emotes);
+    expect(grouped).toHaveLength(30);
+    expect(new Set(grouped)).toEqual(new Set(COMMUNITY_EMOJI_NAMES));
   });
 });

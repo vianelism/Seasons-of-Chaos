@@ -49,7 +49,7 @@ After granting **Manage Roles**, run `/setup-rewards` once. The command creates 
 
 ## Community emotes
 
-The bot looks up the Discord application's custom emojis by name at runtime and presents them to members as community emotes. Members can run `/emotes` to browse them or `/emotes name:` to post one. Autocomplete includes all 30 community emote names. Unicode fallbacks remain in place, so application emojis can be changed without breaking bot responses or requiring numeric IDs in source control.
+The bot looks up the Discord application's custom emojis by name at runtime and presents them to members as community emotes. Members can run `/emotes` to browse a five-group drawer (Essentials, Mood Check, Reactions, Maximum Drama, and Survival Kit) or `/emotes name:` to post one. Autocomplete includes all 30 community emote names. Unicode fallbacks remain in place, so application emojis can be changed without breaking bot responses or requiring numeric IDs in source control.
 
 ## Cloudflare resources
 

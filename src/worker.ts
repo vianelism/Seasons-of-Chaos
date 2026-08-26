@@ -3,7 +3,7 @@ import type { AutomationKind, DiscordInteraction, DiscordMember, DiscordOption, 
 import { D1PassportRepository } from "./d1-repository.js";
 import type { Season, StampDefinition } from "./types.js";
 import { assignRewardRole, discordRequest, runAutomation } from "./automation.js";
-import { COMMUNITY_EMOJI_NAMES, communityEmoji, fetchCommunityEmojis, type CommunityEmojiMap } from "./community-emojis.js";
+import { COMMUNITY_EMOJI_NAMES, COMMUNITY_EMOTE_GROUPS, communityEmoji, fetchCommunityEmojis, type CommunityEmojiMap } from "./community-emojis.js";
 
 const PING = 1, APPLICATION_COMMAND = 2, AUTOCOMPLETE = 4, CHANNEL_MESSAGE = 4, AUTOCOMPLETE_RESULT = 8, EPHEMERAL = 64;
 const ADMINISTRATOR = 1n << 3n, MANAGE_GUILD = 1n << 5n;
@@ -203,10 +203,13 @@ function emotesCommand(interaction: DiscordInteraction, emojis: CommunityEmojiMa
     return message(`${rendered}  **:${selected}:**`);
   }
   const available = COMMUNITY_EMOJI_NAMES.filter((name) => emojis.has(name));
-  const description = available.length
-    ? available.map((name) => `${emojis.get(name)} \`:${name}:\``).join("  ")
-    : "No Seasons of Chaos application emojis are uploaded yet. Unicode fallbacks remain active.";
-  return message("", false, [{ color: 0x7A3E65, title: `${communityEmoji(emojis, "chaos", "✨")} Community Emote Drawer`, description, footer: { text: "Use /emotes name: to post one" } }]);
+  if (!available.length) return message("", false, [{ color: 0x7A3E65, title: "✨ Community Emote Drawer", description: "No Seasons of Chaos application emojis are uploaded yet. Unicode fallbacks remain active." }]);
+  const fields = COMMUNITY_EMOTE_GROUPS.map((group) => ({
+    name: group.name,
+    value: group.emotes.filter((name) => emojis.has(name)).map((name) => `${emojis.get(name)}  \`:${name}:\``).join("\n") || "*Coming soon*",
+    inline: true,
+  }));
+  return message("", false, [{ color: 0x7A3E65, title: `${communityEmoji(emojis, "chaos", "✨")} Community Emote Drawer`, description: "Your official supply of reactions, moods, and completely necessary chaos.", fields, footer: { text: "Use /emotes name: to post one" } }]);
 }
 
 async function autocomplete(interaction: DiscordInteraction, repository: D1PassportRepository, env: Env): Promise<Response> {

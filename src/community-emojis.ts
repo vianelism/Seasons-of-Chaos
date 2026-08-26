@@ -16,6 +16,14 @@ export const COMMUNITY_EMOJI_NAMES = [
   "caffeinechaos",
 ] as const;
 
+export const COMMUNITY_EMOTE_GROUPS = [
+  { name: "✨ Essentials", emotes: ["chaos", "momfuel", "caffeinate", "omgyes", "passport", "stampearned"] },
+  { name: "💬 Mood Check", emotes: ["done", "imfine", "lurking", "justwatching", "yapping", "girlpls"] },
+  { name: "👀 Reactions", emotes: ["bet", "nope", "dead", "receipts", "waiting", "chaosapproved"] },
+  { name: "🎭 Maximum Drama", emotes: ["passportchaos", "secretunlocked", "excuse", "absolutelynot", "sendhelp", "hereforthedrama"] },
+  { name: "☕ Survival Kit", emotes: ["survived", "gotyou", "overit", "cozy", "chaoscrew", "caffeinechaos"] },
+] as const;
+
 export async function fetchCommunityEmojis(env: Env, guildId: string): Promise<CommunityEmojiMap> {
   try {
     const response = await fetch(`https://discord.com/api/v10/applications/${env.DISCORD_CLIENT_ID}/emojis`, {
