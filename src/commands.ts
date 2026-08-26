@@ -30,9 +30,10 @@ export const commandData = [
     .addStringOption((option) => option.setName("stamp").setDescription("The stamp to remove").setAutocomplete(true).setRequired(true)),
   new SlashCommandBuilder()
     .setName("setup-channel")
-    .setDescription("Choose a channel for automatic stamp tracking.")
+    .setDescription("Choose a channel for scheduled activities or automatic stamp tracking.")
     .addStringOption((option) => option.setName("kind").setDescription("What happens in this channel").setRequired(true)
       .addChoices(
+        { name: "Scheduled activities and prompts", value: "activities" },
         { name: "Seasonal conversation", value: "seasonal" }, { name: "Photo sharing", value: "photos" },
         { name: "Movie night", value: "movie-night" }, { name: "Game night", value: "game-night" },
       ))

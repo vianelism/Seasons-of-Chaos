@@ -11,8 +11,8 @@ export interface DiscordMessage {
   author: DiscordUser & { bot?: boolean }; member?: DiscordMember;
   attachments?: Array<{ id: string }>;
 }
-export interface AutomationChannelRow { guild_id: string; kind: AutomationKind; channel_id: string; last_message_id: string | null; }
-export type AutomationKind = "seasonal" | "photos" | "movie-night" | "game-night";
+export interface AutomationChannelRow { guild_id: string; kind: AutomationKind; channel_id: string; last_message_id: string | null; configured_at: string; }
+export type AutomationKind = "activities" | "seasonal" | "photos" | "movie-night" | "game-night";
 export interface DiscordRole { id: string; name: string; position: number; permissions: string; managed: boolean; }
 export interface DiscordEmoji { id: string; name: string | null; animated?: boolean; available?: boolean; }
 export interface StampRow {

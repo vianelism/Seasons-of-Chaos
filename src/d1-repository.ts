@@ -41,9 +41,17 @@ export class D1PassportRepository {
   }
 
   async listAutomationChannels(guildId?: string): Promise<AutomationChannelRow[]> {
-    const statement = this.db.prepare(guildId ? "SELECT guild_id,kind,channel_id,last_message_id FROM automation_channels WHERE guild_id=? ORDER BY kind" : "SELECT guild_id,kind,channel_id,last_message_id FROM automation_channels ORDER BY guild_id,kind");
+    const statement = this.db.prepare(guildId ? "SELECT guild_id,kind,channel_id,last_message_id,configured_at FROM automation_channels WHERE guild_id=? ORDER BY kind" : "SELECT guild_id,kind,channel_id,last_message_id,configured_at FROM automation_channels ORDER BY guild_id,kind");
     const result = await (guildId ? statement.bind(guildId) : statement).all<AutomationChannelRow>();
     return result.results;
+  }
+
+  async hasActivityPost(guildId: string, activityId: string): Promise<boolean> {
+    return Boolean(await this.db.prepare("SELECT 1 FROM activity_posts WHERE guild_id=? AND activity_id=?").bind(guildId, activityId).first());
+  }
+
+  async recordActivityPost(guildId: string, activityId: string, channelId: string): Promise<void> {
+    await this.db.prepare("INSERT OR IGNORE INTO activity_posts (guild_id,activity_id,channel_id,posted_at) VALUES (?,?,?,?)").bind(guildId, activityId, channelId, new Date().toISOString()).run();
   }
 
   async updateChannelCursor(guildId: string, kind: AutomationKind, messageId: string): Promise<void> {

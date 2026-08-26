@@ -4,6 +4,7 @@ import { D1PassportRepository } from "./d1-repository.js";
 import type { Season, StampDefinition } from "./types.js";
 import { assignRewardRole, discordRequest, runAutomation } from "./automation.js";
 import { COMMUNITY_EMOJI_NAMES, COMMUNITY_EMOTE_GROUPS, communityEmoji, communityEmojiId, fetchCommunityEmojis, type CommunityEmojiMap } from "./community-emojis.js";
+import { FALL_2026_ACTIVITIES } from "./config/fall-2026-activities.js";
 
 const PING = 1, APPLICATION_COMMAND = 2, AUTOCOMPLETE = 4, CHANNEL_MESSAGE = 4, AUTOCOMPLETE_RESULT = 8, EPHEMERAL = 64;
 const ADMINISTRATOR = 1n << 3n, MANAGE_GUILD = 1n << 5n;
@@ -106,7 +107,7 @@ async function revoke(interaction: DiscordInteraction, repository: D1PassportRep
   return message(removed ? `${stamp.emoji} **${stamp.name}** was removed from ${name}'s passport. Paperwork corrected.` : `${name} did not have that stamp, so nothing changed.`, true);
 }
 
-const AUTOMATION_KINDS = new Set<AutomationKind>(["seasonal", "photos", "movie-night", "game-night"]);
+const AUTOMATION_KINDS = new Set<AutomationKind>(["activities", "seasonal", "photos", "movie-night", "game-night"]);
 const CHECK_IN_SLUGS = new Set(["cozy-af", "outside-ish", "sweater-weather-survivor", "little-treat-committee", "pumpkin-problems", "costume-department", "candy-tax-auditor", "i-brought-a-dish", "grateful-ish", "leftovers-legend"]);
 
 async function setupChannel(interaction: DiscordInteraction, repository: D1PassportRepository, env: Env): Promise<Response> {
@@ -115,17 +116,17 @@ async function setupChannel(interaction: DiscordInteraction, repository: D1Passp
   const channelId = String(option(interaction.data?.options, "channel") || "");
   if (!interaction.guild_id || !AUTOMATION_KINDS.has(kind) || !channelId) return message("I could not understand that channel setup.", true);
   await repository.configureChannel(interaction.guild_id, kind, channelId, interaction.member?.user?.id || interaction.user?.id || "unknown");
-  return message(`✅ Automatic **${kind}** tracking is now watching <#${channelId}>. New activity is checked once per hour.`, true);
+  return message(kind === "activities" ? `✅ Scheduled activities will post automatically in <#${channelId}>. The hourly schedule will take it from here.` : `✅ Automatic **${kind}** tracking is now watching <#${channelId}>. New activity is checked once per hour.`, true);
 }
 
 async function automationStatus(interaction: DiscordInteraction, repository: D1PassportRepository, emojis: CommunityEmojiMap): Promise<Response> {
   if (!interaction.guild_id) return message("Automation status only works inside a server.", true);
   const configured = await repository.listAutomationChannels(interaction.guild_id);
-  const lines = (["seasonal", "photos", "movie-night", "game-night"] as AutomationKind[]).map((kind) => {
+  const lines = (["activities", "seasonal", "photos", "movie-night", "game-night"] as AutomationKind[]).map((kind) => {
     const found = configured.find((item) => item.kind === kind);
     return `${found ? "✅" : "⬜"} **${kind}** — ${found ? `<#${found.channel_id}>` : "not configured"}`;
   });
-  return message("", false, [{ color: 0x4E7A5B, title: `${communityEmoji(emojis, "justwatching", "⚙️")} Automatic Stamp Tracking`, description: `${lines.join("\n")}\n\nThe bot checks configured channels once per hour. Members can use **/check-in** for activities a message cannot identify safely.` }]);
+  return message("", false, [{ color: 0x4E7A5B, title: `${communityEmoji(emojis, "justwatching", "⚙️")} Event Automation`, description: `${lines.join("\n")}\n\nThe bot posts due activities and checks configured participation channels once per hour. Members can use **/check-in** for activities a message cannot identify safely.` }]);
 }
 
 async function checkIn(interaction: DiscordInteraction, repository: D1PassportRepository, env: Env, emojis: CommunityEmojiMap): Promise<Response> {
@@ -186,7 +187,7 @@ async function setupRewards(interaction: DiscordInteraction, repository: D1Passp
 
 function chaosHelp(emojis: CommunityEmojiMap): Response {
   return message("", false, [{ color: 0xD86C32, title: `${communityEmoji(emojis, "chaoscrew", "🍂")} Seasons of Chaos — Quick Guide`, description: "Join when you can. This is community fun, not homework.", fields: [
-    { name: "Automatic stamps", value: "The bot checks the configured seasonal, photo, movie-night, and game-night channels once per hour." },
+    { name: "Automatic event hosting", value: "The bot posts the full September–January activity schedule and checks participation channels once per hour." },
     { name: "Activity check-ins", value: "Use **/check-in** for cozy moments, treats, costumes, gratitude, and other activities the bot cannot identify safely." },
     { name: "Your collection", value: "Use **/passport** to see your stamps, **/stamps** to browse public achievements, and **/rewards** for reward progress." },
     { name: "Community emotes", value: "Use **/emotes** to browse or post one. Moderators can use **/add-emote** to copy one into this server's normal emote picker." },
@@ -195,18 +196,18 @@ function chaosHelp(emojis: CommunityEmojiMap): Response {
   ], footer: { text: "No leaderboard • No required participation • Every season stacks" } }]);
 }
 
-function eventGuide(emojis: CommunityEmojiMap): Response {
+async function eventGuide(interaction: DiscordInteraction, repository: D1PassportRepository, emojis: CommunityEmojiMap): Promise<Response> {
+  const now = new Date().toISOString();
+  const upcoming = FALL_2026_ACTIVITIES.filter((activity) => activity.scheduledAt > now).slice(0, 5);
+  const activityChannel = interaction.guild_id ? (await repository.listAutomationChannels(interaction.guild_id)).find((row) => row.kind === "activities") : undefined;
   return message("", false, [{
     color: 0xD86C32,
     title: `${communityEmoji(emojis, "cozy", "🍂")} Fall Into Chaos 2026–27`,
-    description: "The original September–January extravaganza now lives inside **Seasons of Chaos**. Fall covers September–November, Winter carries December–January, and every stamp still stacks into one lifetime passport.",
+    description: `This is the live automated schedule—not a static announcement. ${activityChannel ? `Activities post in <#${activityChannel.channel_id}>.` : "A moderator still needs to choose the posting channel with **/setup-channel kind: Scheduled activities and prompts**."}`,
     fields: [
-      { name: "🍁 September — Cozy Fall Kickoff", value: "This-or-That, cozy nonsense, photo dumps, Mom Bingo, seasonal debates, and excuses to talk again." },
-      { name: "🎃 October — Halloween Chaos", value: "Daily prompts, pumpkins, costumes, spooky stories, trivia, movie night, and Halloween superlatives." },
-      { name: "🦃 November — Discord Friendsgiving", value: "An imaginary table, recipes, hot takes, survival bingo, gratitude, appreciation, and family-chaos confessions." },
-      { name: "🎄 December — Holiday Chaos", value: "However you celebrate: 12 Days of Discord, movies, trivia, decorations, photos, Guess the Mom, a free digital Secret Santa, and memes." },
-      { name: "❄️ January — We Survived", value: "Pajama-party energy, games, whatever snacks and drinks exist, seasonal awards, and a victory lap for surviving." },
-      { name: `${communityEmoji(emojis, "passportchaos", "🛂")} The passport`, value: "Stamps can come from events, everyday community participation, check-ins, moderator awards, and a few surprises." },
+      { name: "Up next", value: upcoming.length ? upcoming.map((activity) => `**<t:${Math.floor(new Date(activity.scheduledAt).getTime() / 1000)}:D>** — ${activity.title}`).join("\n") : "The Fall Into Chaos schedule is complete. We survived." },
+      { name: "What runs automatically", value: `${FALL_2026_ACTIVITIES.length} scheduled posts: September kickoff activities, 31 daily Halloween prompts, Friendsgiving, 12 Days of Discord, Holiday Chaos, and January's wrap-up.` },
+      { name: `${communityEmoji(emojis, "passportchaos", "🛂")} Passport connection`, value: "The bot separately tracks configured conversation, photo, movie-night, and game-night channels, plus self-service check-ins and surprise achievements." },
       { name: "❤️ Most importantly", value: "This is free, casual, and mostly asynchronous. Participate a lot, once, late, or after disappearing for weeks. Lurking is valid. There are no purchases, leaderboards, or participation requirements." },
     ],
     footer: { text: "Different seasons • Same chaos • Real life always comes first" },
@@ -297,7 +298,7 @@ async function handleInteraction(interaction: DiscordInteraction, env: Env): Pro
     case "check-in": return checkIn(interaction, repository, env, emojis);
     case "setup-rewards": return setupRewards(interaction, repository, env);
     case "chaos-help": return chaosHelp(emojis);
-    case "event-guide": return eventGuide(emojis);
+    case "event-guide": return eventGuide(interaction, repository, emojis);
     case "emotes": return emotesCommand(interaction, emojis);
     case "add-emote": return addEmote(interaction, env, emojis);
     default: return message("The passport office cannot find that form.", true);

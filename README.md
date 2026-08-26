@@ -27,7 +27,7 @@ No always-running computer, gateway connection, Railway service, or Supabase pro
 - `/check-in activity` — self-service activity stamp with no moderator approval
 - `/setup-rewards` — create, connect, and synchronize the four Fall reward roles
 - `/chaos-help` — show a short member-friendly guide
-- `/event-guide` — show the September–January Fall Into Chaos plan and no-pressure promise
+- `/event-guide` — show the next items from the live September–January activity schedule
 - `/emotes [name]` — browse uploaded community emotes or post one in the channel
 - `/add-emote name` — moderator-only copy of an application emote into the server's normal emote picker
 
@@ -35,7 +35,13 @@ Administrators and members with **Manage Server** can award and revoke stamps. A
 
 ## Automatic Fall 2026 tracking
 
-The Worker checks configured channels once per hour. Use `/setup-channel` once for each channel type you use. A single Discord channel may be selected for more than one type.
+The Worker checks configured channels once per hour. Use `/setup-channel` once for each channel type you use. A single Discord channel may be selected for more than one type. Select **Scheduled activities and prompts** once to make the bot host the preloaded event plan automatically.
+
+- The schedule contains 66 posts from September 1 through January 27.
+- It includes seven September kickoff activities, all 31 Days of Halloween, eight Friendsgiving activities, all 12 Days of Discord plus three holiday check-ins, and five January wrap-up activities.
+- D1 records every posted activity per server, so hourly checks do not create duplicates.
+- Configuring the activity channel after the event begins does not dump activities from before the channel was configured.
+- `/event-guide` reads the same schedule and displays what is coming next; nobody maintains a separate guide by hand.
 
 - Seasonal conversation awards the monthly participation stamps.
 - Photo sharing awards `Pics or It Didn't Happen` when a message contains an attachment.
@@ -62,8 +68,8 @@ The original September–January event remains the creative brief for the first 
 - **Fall 2026** contains September's Cozy Fall Kickoff, October's Halloween Chaos, and November's Discord Friendsgiving.
 - **Winter 2026–27** carries December's Holiday Chaos and January's We Survived wrap-up.
 - The passport never resets; Fall and Winter stamps stack into one lifetime collection and can be viewed by season.
-- `/event-guide` keeps the month-by-month activity menu and the core promise visible inside Discord.
-- The bot automates passport tracking, configured-channel participation, rewards, check-ins, and emote tools. Prompts, bingo, trivia, movie/game nights, superlatives, Secret Santa, and awards remain moderator/community-hosted activities until dedicated features are added.
+- `/event-guide` keeps the upcoming automated schedule and the core promise visible inside Discord.
+- The bot automatically posts prompts, bingo-style check-ins, trivia and answer reveals, photo activities, superlative nominations, a free digital Secret Santa activity, movie/game-night prompts, and wrap-up awards nominations. The group still chooses whether and when to turn a movie/game prompt into a live gathering; asynchronous replies always count.
 - Participation remains free, casual, mostly asynchronous, and optional. Late replies, limited participation, lurking, and returning after an absence are all valid; there are no leaderboards or purchase requirements.
 
 ## Cloudflare resources

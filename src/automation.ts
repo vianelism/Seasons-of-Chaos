@@ -2,6 +2,7 @@ import type { AutomationKind, DiscordMessage } from "./cloudflare-types.js";
 import { D1PassportRepository } from "./d1-repository.js";
 import type { Reward, StampDefinition } from "./types.js";
 import { communityEmoji, fetchCommunityEmojis, type CommunityEmojiMap } from "./community-emojis.js";
+import { FALL_2026_ACTIVITIES } from "./config/fall-2026-activities.js";
 
 const API = "https://discord.com/api/v10";
 
@@ -68,11 +69,31 @@ export async function runAutomation(env: Env): Promise<void> {
   if (!env.DISCORD_TOKEN) throw new Error("DISCORD_TOKEN is required for automatic tracking");
   const repository = new D1PassportRepository(env.DB);
   const channels = await repository.listAutomationChannels();
-  const announcementByGuild = new Map(channels.filter((row) => row.kind === "seasonal").map((row) => [row.guild_id, row.channel_id]));
+  let activityPosts = 0;
+  const now = new Date().toISOString();
+  for (const channel of channels.filter((row) => row.kind === "activities")) {
+    const due = FALL_2026_ACTIVITIES.filter((activity) => activity.scheduledAt >= channel.configured_at && activity.scheduledAt <= now);
+    for (const activity of due) {
+      if (await repository.hasActivityPost(channel.guild_id, activity.id)) continue;
+      try {
+        await discordRequest(env, `/channels/${channel.channel_id}/messages`, { method: "POST", body: JSON.stringify({
+          content: `**${activity.title}**\n${activity.body}\n\n*No pressure. Answer whenever—or simply enjoy the chaos.*`,
+          allowed_mentions: { parse: [] },
+        }) });
+        await repository.recordActivityPost(channel.guild_id, activity.id, channel.channel_id);
+        activityPosts += 1;
+      } catch (error) {
+        console.error(JSON.stringify({ event: "scheduled_activity_failed", guildId: channel.guild_id, activityId: activity.id, error: error instanceof Error ? error.message : String(error) }));
+        break;
+      }
+    }
+  }
+  const trackedChannels = channels.filter((row) => row.kind !== "activities");
+  const announcementByGuild = new Map(trackedChannels.filter((row) => row.kind === "seasonal").map((row) => [row.guild_id, row.channel_id]));
   const emojiByGuild = new Map<string, CommunityEmojiMap>();
-  for (const guildId of new Set(channels.map((row) => row.guild_id))) emojiByGuild.set(guildId, await fetchCommunityEmojis(env, guildId));
+  for (const guildId of new Set(trackedChannels.map((row) => row.guild_id))) emojiByGuild.set(guildId, await fetchCommunityEmojis(env, guildId));
   let awards = 0;
-  for (const channel of channels) {
+  for (const channel of trackedChannels) {
     if (!channel.last_message_id) {
       try {
         const baselineResponse = await discordRequest(env, `/channels/${channel.channel_id}/messages?limit=1`);
@@ -95,5 +116,5 @@ export async function runAutomation(env: Env): Promise<void> {
       console.error(JSON.stringify({ event: "automation_channel_failed", guildId: channel.guild_id, kind: channel.kind, error: error instanceof Error ? error.message : String(error) }));
     }
   }
-  console.log(JSON.stringify({ event: "automation_complete", channels: channels.length, awards }));
+  console.log(JSON.stringify({ event: "automation_complete", channels: channels.length, activityPosts, awards }));
 }
