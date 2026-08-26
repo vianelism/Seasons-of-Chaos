@@ -1,0 +1,269 @@
+# Seasons of Chaos — Privacy Policy
+
+**Effective Date:** August 26, 2026
+**Last Updated:** August 26, 2026
+
+## 1. Introduction
+
+This Privacy Policy explains how **Seasons of Chaos** (“Seasons of Chaos,” “the App,” “the Bot,” “we,” “us,” or “our”) collects, uses, stores, and protects information when you interact with the Seasons of Chaos Discord application.
+
+Seasons of Chaos is a community engagement application that provides seasonal events, virtual passports, collectible stamps, achievements, activities, and related community features within Discord.
+
+We aim to collect and retain only the information reasonably necessary to provide these features.
+
+## 2. Relationship With Discord
+
+Seasons of Chaos operates through Discord but is an independent third-party application.
+
+Discord separately collects and processes information according to Discord's own Privacy Policy and other applicable policies.
+
+This Privacy Policy applies only to information processed by Seasons of Chaos.
+
+## 3. Information We Process
+
+Depending on the features you use, Seasons of Chaos may process the following information.
+
+### Discord User Information
+
+The App may receive:
+
+* Discord user ID;
+* Discord username;
+* Discord display name;
+* Discord avatar or avatar URL; and
+* Other basic account information provided by Discord that is necessary to display or operate App features.
+
+Your Discord user ID is a unique identifier provided by Discord and may be used to associate your passport and achievements with your Discord account.
+
+### Discord Server Information
+
+When Seasons of Chaos is installed in a Discord server, the App may process:
+
+* Discord server/guild ID;
+* Server name;
+* Relevant channel IDs;
+* Role IDs;
+* App configuration settings; and
+* Other identifiers necessary to provide server-specific functionality.
+
+### Passport and Achievement Information
+
+To operate the Seasons of Chaos Passport system, we may store:
+
+* Passport stamps earned;
+* Achievements earned;
+* Achievement or stamp identifiers;
+* Dates and times achievements were awarded;
+* The Discord user ID of the recipient;
+* The Discord user ID of the moderator or administrator who awarded or revoked an achievement;
+* Seasonal progress;
+* Event participation information; and
+* Other information directly related to App activities.
+
+### Command and Interaction Information
+
+When you interact with Seasons of Chaos using Discord slash commands, buttons, menus, forms, or other Discord interactions, the App receives information necessary to process that interaction.
+
+This may include:
+
+* Your Discord user ID;
+* Server ID;
+* Channel ID;
+* Command used;
+* Options or selections submitted with the command; and
+* Information necessary to provide the requested response.
+
+Limited technical logs may be retained when reasonably necessary for troubleshooting, security, and reliability.
+
+## 4. Message Content
+
+Seasons of Chaos is designed primarily around Discord application commands and interactions.
+
+The App does **not intentionally collect or permanently store general Discord conversation or direct-message content** as part of its core passport functionality.
+
+If a future feature requires access to message content, this Privacy Policy will be updated as appropriate and any required Discord permissions will be requested before that functionality is used.
+
+## 5. Information We Do Not Intentionally Collect
+
+Seasons of Chaos does not intentionally collect through its core functionality:
+
+* Discord passwords;
+* Payment card information;
+* Banking information;
+* Government identification numbers;
+* Precise physical location;
+* Private Discord direct messages;
+* General Discord message histories;
+* Personal email addresses from Discord; or
+* Personal phone numbers from Discord.
+
+Please do not submit sensitive personal information through App commands or activities.
+
+## 6. How We Use Information
+
+Information processed by Seasons of Chaos may be used to:
+
+* Create and maintain virtual passports;
+* Record and display earned stamps and achievements;
+* Track seasonal or event participation;
+* Prevent duplicate achievement awards;
+* Allow authorized moderators to award or revoke stamps;
+* Display passport progress;
+* Provide server-specific configurations;
+* Operate games, prompts, events, and activities;
+* Determine eligibility for certain achievements;
+* Provide secret or surprise achievements;
+* Diagnose technical problems;
+* Maintain the security and reliability of the App;
+* Prevent abuse or misuse; and
+* Improve Seasons of Chaos features.
+
+We do not use information collected by Seasons of Chaos for targeted advertising.
+
+## 7. Sale of Personal Information
+
+**Seasons of Chaos does not sell users' personal information.**
+
+We also do not rent personal information to advertisers or data brokers.
+
+## 8. Sharing and Disclosure
+
+We do not sell user information.
+
+Information may be processed by service providers necessary to operate Seasons of Chaos, such as:
+
+* Application hosting providers;
+* Database providers;
+* Logging or monitoring providers; and
+* Other infrastructure providers required to operate the App.
+
+These providers may process limited information as necessary to provide their services.
+
+Information may also be disclosed when reasonably necessary to:
+
+* Comply with applicable law or valid legal process;
+* Protect the security or integrity of Seasons of Chaos;
+* Investigate abuse or security incidents;
+* Protect users or others from harm; or
+* Enforce applicable terms and policies.
+
+## 9. Information Visible to Other Discord Users
+
+Some information is intentionally displayed within Discord as part of Seasons of Chaos.
+
+For example, other members of a Discord server may be able to see:
+
+* Your Discord display name;
+* Your avatar;
+* Passport stamps you have earned;
+* Your public achievements;
+* Your passport progress;
+* Public achievement announcements; and
+* Participation information associated with community activities.
+
+Secret achievements may remain hidden until they are earned or otherwise revealed according to the App's design.
+
+Server moderators may have access to additional administrative information necessary to manage Seasons of Chaos within their server.
+
+## 10. Data Retention
+
+We retain information only for as long as reasonably necessary to provide Seasons of Chaos, maintain its functionality, satisfy legitimate operational or security needs, or comply with applicable legal requirements.
+
+Passport and achievement information may remain stored while Seasons of Chaos continues to provide passport functionality for the relevant Discord server.
+
+Technical logs, when collected, may be retained for a limited period appropriate for troubleshooting, security, and operational purposes.
+
+Information may be deleted or anonymized when it is no longer reasonably necessary.
+
+## 11. Removing the App From a Server
+
+A Discord server administrator may remove Seasons of Chaos from a server at any time using Discord's available controls.
+
+Removing the App prevents future interaction with that server but may not immediately delete all previously stored server or passport information.
+
+Server administrators may contact us to request deletion of stored information associated with their Discord server.
+
+## 12. Data Access and Deletion Requests
+
+You may contact us to request information about data associated with your Discord account or to request deletion of data maintained by Seasons of Chaos.
+
+To help verify and locate your information, we may request your Discord user ID or other reasonable information necessary to identify the relevant records.
+
+Discord server owners or authorized administrators may also request deletion of information associated with their server.
+
+Requests can be submitted to:
+
+**Email:** info@craftsgineered.com
+
+We will respond to reasonable requests in accordance with applicable law.
+
+Some information may need to be retained when required by law, necessary for security or fraud prevention, or otherwise permitted by applicable law.
+
+## 13. Data Security
+
+We take reasonable technical and organizational measures intended to protect information processed by Seasons of Chaos.
+
+These measures may include:
+
+* Restricting database access;
+* Using environment variables or secure secret-management mechanisms for authentication credentials;
+* Limiting Discord permissions to those needed for App functionality;
+* Restricting administrative commands to authorized users;
+* Maintaining access controls; and
+* Keeping authentication tokens and credentials out of publicly accessible source code.
+
+However, no online system or method of electronic storage can be guaranteed to be completely secure.
+
+## 14. Discord Permissions
+
+Seasons of Chaos aims to request only Discord permissions reasonably necessary to provide its features.
+
+Certain features may require additional permissions as the App evolves.
+
+If new functionality materially changes the categories of Discord information processed by Seasons of Chaos, this Privacy Policy will be updated accordingly.
+
+## 15. Children's Privacy
+
+Seasons of Chaos is not intended to circumvent Discord's age requirements.
+
+Users must meet the minimum age required to use Discord in their applicable country or region.
+
+We do not knowingly use Seasons of Chaos to solicit personal information from children who are not permitted to use Discord.
+
+If you believe information belonging to a child has been collected improperly, please contact us at **info@craftsgineered.com**.
+
+## 16. International Users
+
+Seasons of Chaos may be accessible to Discord users in multiple countries.
+
+Depending on where you live, applicable privacy law may provide rights regarding your personal information, including rights to access, correct, delete, or obtain information about how your personal data is processed.
+
+Requests regarding information maintained by Seasons of Chaos may be submitted to **info@craftsgineered.com**.
+
+## 17. Third-Party Services
+
+Seasons of Chaos relies on Discord and may use third-party infrastructure providers to operate.
+
+Your use of Discord is separately governed by Discord's terms and privacy practices.
+
+Third-party infrastructure providers may also process limited information according to their own applicable terms and privacy policies.
+
+## 18. Changes to This Privacy Policy
+
+We may update this Privacy Policy when Seasons of Chaos changes, new features are introduced, our data practices change, or legal or platform requirements require an update.
+
+The “Last Updated” date at the top of this Policy will be changed whenever this document is revised.
+
+Material changes affecting how user information is processed may also be communicated through the App or other reasonable means when appropriate.
+
+## 19. Contact
+
+Questions, privacy requests, or concerns regarding Seasons of Chaos may be directed to:
+
+**Email:** info@craftsgineered.com
+
+---
+
+**Craftsgineered**
+*Different seasons. Same chaos.*
+
