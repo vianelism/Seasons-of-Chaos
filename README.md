@@ -27,7 +27,7 @@ No always-running computer, gateway connection, Railway service, or Supabase pro
 - `/check-in activity` — self-service activity stamp with no moderator approval
 - `/setup-rewards` — create, connect, and synchronize the four Fall reward roles
 - `/chaos-help` — show a short member-friendly guide
-- `/emojis [name]` — browse uploaded community emojis or post one in the channel
+- `/emotes [name]` — browse uploaded community emotes or post one in the channel
 
 Administrators and members with **Manage Server** can award and revoke stamps. Additional moderator role IDs can be configured in `wrangler.jsonc` as a comma-separated `MODERATOR_ROLE_IDS` value.
 
@@ -47,9 +47,9 @@ The bot needs **View Channel**, **Read Message History**, and **Send Messages** 
 
 After granting **Manage Roles**, run `/setup-rewards` once. The command creates zero-permission cosmetic roles for First Leaves, Certified Cozy, Fall Main Character, and Fall Chaos Legend, connects them to D1, and synchronizes qualifying existing members.
 
-## Community emojis
+## Community emotes
 
-The bot looks up the Discord application's custom emojis by name at runtime and uses them in passport, stamp, reward, automation, and help messages. Members can run `/emojis` to browse the ones currently uploaded or `/emojis name:` to post one. Autocomplete includes all 30 community emoji names. Unicode fallbacks remain in place, so emojis can be changed without breaking bot responses or requiring numeric IDs in source control.
+The bot looks up the Discord application's custom emojis by name at runtime and presents them to members as community emotes. Members can run `/emotes` to browse them or `/emotes name:` to post one. Autocomplete includes all 30 community emote names. Unicode fallbacks remain in place, so application emojis can be changed without breaking bot responses or requiring numeric IDs in source control.
 
 ## Cloudflare resources
 

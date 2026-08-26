@@ -189,15 +189,15 @@ function chaosHelp(emojis: CommunityEmojiMap): Response {
     { name: "Automatic stamps", value: "The bot checks the configured seasonal, photo, movie-night, and game-night channels once per hour." },
     { name: "Activity check-ins", value: "Use **/check-in** for cozy moments, treats, costumes, gratitude, and other activities the bot cannot identify safely." },
     { name: "Your collection", value: "Use **/passport** to see your stamps, **/stamps** to browse public achievements, and **/rewards** for reward progress." },
-    { name: "Community emojis", value: "Use **/emojis** to browse the uploaded emoji drawer or post one by name." },
+    { name: "Community emotes", value: "Use **/emotes** to browse the uploaded emote drawer or post one by name." },
     { name: "Secret achievements", value: "Some stamps stay hidden until the passport office decides you have caused enough seasonal activity." },
   ], footer: { text: "No leaderboard • No required participation • Every season stacks" } }]);
 }
 
-function emojisCommand(interaction: DiscordInteraction, emojis: CommunityEmojiMap): Response {
+function emotesCommand(interaction: DiscordInteraction, emojis: CommunityEmojiMap): Response {
   const selected = String(option(interaction.data?.options, "name") || "").toLowerCase();
   if (selected) {
-    if (!COMMUNITY_EMOJI_NAMES.includes(selected as (typeof COMMUNITY_EMOJI_NAMES)[number])) return message("That is not a Seasons of Chaos emoji name.", true);
+    if (!COMMUNITY_EMOJI_NAMES.includes(selected as (typeof COMMUNITY_EMOJI_NAMES)[number])) return message("That is not a Seasons of Chaos emote name.", true);
     const rendered = emojis.get(selected);
     if (!rendered) return message(`:${selected}: has not been uploaded to the Discord application yet.`, true);
     return message(`${rendered}  **:${selected}:**`);
@@ -206,7 +206,7 @@ function emojisCommand(interaction: DiscordInteraction, emojis: CommunityEmojiMa
   const description = available.length
     ? available.map((name) => `${emojis.get(name)} \`:${name}:\``).join("  ")
     : "No Seasons of Chaos application emojis are uploaded yet. Unicode fallbacks remain active.";
-  return message("", false, [{ color: 0x7A3E65, title: `${communityEmoji(emojis, "chaos", "✨")} Community Emoji Drawer`, description, footer: { text: "Use /emojis name: to post one" } }]);
+  return message("", false, [{ color: 0x7A3E65, title: `${communityEmoji(emojis, "chaos", "✨")} Community Emote Drawer`, description, footer: { text: "Use /emotes name: to post one" } }]);
 }
 
 async function autocomplete(interaction: DiscordInteraction, repository: D1PassportRepository, env: Env): Promise<Response> {
@@ -215,7 +215,7 @@ async function autocomplete(interaction: DiscordInteraction, repository: D1Passp
     const seasons = await repository.listSeasons();
     return json({ type: AUTOCOMPLETE_RESULT, data: { choices: seasons.filter((season) => `${season.name} ${season.slug}`.toLowerCase().includes(search)).slice(0, 25).map((season) => ({ name: `${season.emoji} ${season.name}`, value: season.slug })) } });
   }
-  if (interaction.data?.name === "emojis") {
+  if (interaction.data?.name === "emotes") {
     return json({ type: AUTOCOMPLETE_RESULT, data: { choices: COMMUNITY_EMOJI_NAMES.filter((name) => name.includes(search)).slice(0, 25).map((name) => ({ name: `:${name}:`, value: name })) } });
   }
   if (!isModerator(interaction, env)) return json({ type: AUTOCOMPLETE_RESULT, data: { choices: [] } });
@@ -245,7 +245,7 @@ async function handleInteraction(interaction: DiscordInteraction, env: Env): Pro
     case "check-in": return checkIn(interaction, repository, env, emojis);
     case "setup-rewards": return setupRewards(interaction, repository, env);
     case "chaos-help": return chaosHelp(emojis);
-    case "emojis": return emojisCommand(interaction, emojis);
+    case "emotes": return emotesCommand(interaction, emojis);
     default: return message("The passport office cannot find that form.", true);
   }
 }
