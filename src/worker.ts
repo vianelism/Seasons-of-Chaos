@@ -1,8 +1,8 @@
 import { verifyKey } from "discord-interactions";
-import type { AutomationKind, DiscordInteraction, DiscordMember, DiscordOption, DiscordUser } from "./cloudflare-types.js";
+import type { AutomationKind, DiscordInteraction, DiscordMember, DiscordOption, DiscordRole, DiscordUser } from "./cloudflare-types.js";
 import { D1PassportRepository } from "./d1-repository.js";
 import type { Season, StampDefinition } from "./types.js";
-import { runAutomation } from "./automation.js";
+import { assignRewardRole, discordRequest, runAutomation } from "./automation.js";
 
 const PING = 1, APPLICATION_COMMAND = 2, AUTOCOMPLETE = 4, CHANNEL_MESSAGE = 4, AUTOCOMPLETE_RESULT = 8, EPHEMERAL = 64;
 const ADMINISTRATOR = 1n << 3n, MANAGE_GUILD = 1n << 5n;
@@ -88,8 +88,11 @@ async function award(interaction: DiscordInteraction, repository: D1PassportRepo
   if (!interaction.guild_id || !user || !stamp) return message("That member or stamp could not be found.", true);
   const created = await repository.award(interaction.guild_id, user.id, displayName(user, member), stamp.slug, interaction.member?.user?.id || interaction.user?.id || "unknown");
   if (!created) return message(`${displayName(user, member)} already has ${stamp.emoji} **${stamp.name}**. The passport office caught the duplicate.`, true);
+  const unlocked = await repository.claimUnlockedRewards(interaction.guild_id, user.id);
+  for (const reward of unlocked) await assignRewardRole(env, interaction.guild_id, user.id, reward);
   const announce = option(interaction.data?.options, "announce") !== false;
-  return message(`**STAMP EARNED 🎉**\n${stamp.emoji} <@${user.id}> earned the **${stamp.name}** passport stamp!${stamp.announcement ? `\n*${stamp.announcement}*` : "\n*The passport office has approved this nonsense.*"}`, !announce);
+  const rewardText = unlocked.length ? `\n\n**REWARD UNLOCKED 🎁** ${unlocked.map((reward) => `${reward.emoji} **${reward.name}**`).join(", ")}` : "";
+  return message(`**STAMP EARNED 🎉**\n${stamp.emoji} <@${user.id}> earned the **${stamp.name}** passport stamp!${stamp.announcement ? `\n*${stamp.announcement}*` : "\n*The passport office has approved this nonsense.*"}${rewardText}`, !announce);
 }
 
 async function revoke(interaction: DiscordInteraction, repository: D1PassportRepository, env: Env): Promise<Response> {
@@ -124,7 +127,7 @@ async function automationStatus(interaction: DiscordInteraction, repository: D1P
   return message("", false, [{ color: 0x4E7A5B, title: "⚙️ Automatic Stamp Tracking", description: `${lines.join("\n")}\n\nThe bot checks configured channels once per hour. Members can use **/check-in** for activities a message cannot identify safely.` }]);
 }
 
-async function checkIn(interaction: DiscordInteraction, repository: D1PassportRepository): Promise<Response> {
+async function checkIn(interaction: DiscordInteraction, repository: D1PassportRepository, env: Env): Promise<Response> {
   const slug = String(option(interaction.data?.options, "activity") || "");
   const user = interaction.member?.user || interaction.user;
   if (!interaction.guild_id || !user || !CHECK_IN_SLUGS.has(slug)) return message("That check-in could not be processed.", true);
@@ -133,8 +136,60 @@ async function checkIn(interaction: DiscordInteraction, repository: D1PassportRe
   const created = await repository.award(interaction.guild_id, user.id, displayName(user, interaction.member), slug, "self-check-in");
   if (!created) return message(`${stamp.emoji} You already have **${stamp.name}**. No duplicate paperwork required.`, true);
   const rewards = await repository.claimUnlockedRewards(interaction.guild_id, user.id);
+  for (const reward of rewards) await assignRewardRole(env, interaction.guild_id, user.id, reward);
   const rewardText = rewards.length ? `\n\n**REWARD UNLOCKED 🎁** ${rewards.map((reward) => `${reward.emoji} **${reward.name}**`).join(", ")}` : "";
   return message(`**STAMP EARNED 🎉**\n${stamp.emoji} <@${user.id}> earned **${stamp.name}**!\n*${stamp.announcement || "Officially documented for absolutely no important reason."}*${rewardText}`);
+}
+
+const FALL_REWARD_ROLES: Record<string, { name: string; color: number }> = {
+  "first-leaves": { name: "🍁 First Leaves", color: 0xC96E28 },
+  "certified-cozy": { name: "🧣 Certified Cozy", color: 0x8B5E3C },
+  "fall-main-character": { name: "🎤 Fall Main Character", color: 0xB94E73 },
+  "fall-chaos-legend": { name: "👑 Fall Chaos Legend", color: 0xD4A72C },
+};
+
+async function setupRewards(interaction: DiscordInteraction, repository: D1PassportRepository, env: Env): Promise<Response> {
+  if (!isModerator(interaction, env)) return message("Reward setup is for moderators only. 🗃️", true);
+  if (!interaction.guild_id) return message("Reward setup only works inside a server.", true);
+  try {
+    const rolesResponse = await discordRequest(env, `/guilds/${interaction.guild_id}/roles`);
+    const roles = (await rolesResponse.json()) as DiscordRole[];
+    const connected: string[] = [];
+    for (const [slug, definition] of Object.entries(FALL_REWARD_ROLES)) {
+      let role = roles.find((item) => item.name === definition.name);
+      if (!role) {
+        const created = await discordRequest(env, `/guilds/${interaction.guild_id}/roles`, {
+          method: "POST",
+          headers: { "X-Audit-Log-Reason": encodeURIComponent("Seasons of Chaos automatic Fall 2026 rewards") },
+          body: JSON.stringify({ name: definition.name, color: definition.color, permissions: "0", hoist: false, mentionable: false }),
+        });
+        role = (await created.json()) as DiscordRole;
+        roles.push(role);
+      }
+      await repository.setRewardRole(slug, role.id);
+      connected.push(`<@&${role.id}>`);
+    }
+    const updatedRewards = await repository.listRewards();
+    for (const userId of await repository.listUserIds(interaction.guild_id)) {
+      for (const reward of updatedRewards.filter((item) => item.roleRewardId)) {
+        const count = (await repository.getEarned(interaction.guild_id, userId, reward.seasonSlug)).length;
+        if (count >= reward.threshold) await assignRewardRole(env, interaction.guild_id, userId, reward);
+      }
+    }
+    return message(`✅ Fall reward roles are created, connected, and synced:\n${connected.join("\n")}`, true);
+  } catch (error) {
+    console.error(JSON.stringify({ event: "reward_setup_failed", error: error instanceof Error ? error.message : String(error) }));
+    return message("Discord blocked reward-role setup. Give the bot **Manage Roles**, move its bot role above the reward roles, then run `/setup-rewards` again.", true);
+  }
+}
+
+function chaosHelp(): Response {
+  return message("", false, [{ color: 0xD86C32, title: "🍂 Seasons of Chaos — Quick Guide", description: "Join when you can. This is community fun, not homework.", fields: [
+    { name: "Automatic stamps", value: "The bot checks the configured seasonal, photo, movie-night, and game-night channels once per hour." },
+    { name: "Activity check-ins", value: "Use **/check-in** for cozy moments, treats, costumes, gratitude, and other activities the bot cannot identify safely." },
+    { name: "Your collection", value: "Use **/passport** to see your stamps, **/stamps** to browse public achievements, and **/rewards** for reward progress." },
+    { name: "Secret achievements", value: "Some stamps stay hidden until the passport office decides you have caused enough seasonal activity." },
+  ], footer: { text: "No leaderboard • No required participation • Every season stacks" } }]);
 }
 
 async function autocomplete(interaction: DiscordInteraction, repository: D1PassportRepository, env: Env): Promise<Response> {
@@ -166,7 +221,9 @@ async function handleInteraction(interaction: DiscordInteraction, env: Env): Pro
     case "revoke": return revoke(interaction, repository, env);
     case "setup-channel": return setupChannel(interaction, repository, env);
     case "automation-status": return automationStatus(interaction, repository);
-    case "check-in": return checkIn(interaction, repository);
+    case "check-in": return checkIn(interaction, repository, env);
+    case "setup-rewards": return setupRewards(interaction, repository, env);
+    case "chaos-help": return chaosHelp();
     default: return message("The passport office cannot find that form.", true);
   }
 }

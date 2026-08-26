@@ -87,4 +87,13 @@ export class D1PassportRepository {
     }
     return unlocked;
   }
+
+  async setRewardRole(slug: string, roleId: string): Promise<void> {
+    await this.db.prepare("UPDATE rewards SET role_reward_id=? WHERE slug=?").bind(roleId, slug).run();
+  }
+
+  async listUserIds(guildId: string): Promise<string[]> {
+    const result = await this.db.prepare("SELECT user_id FROM users WHERE guild_id=?").bind(guildId).all<{ user_id: string }>();
+    return result.results.map((row) => row.user_id);
+  }
 }

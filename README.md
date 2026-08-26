@@ -25,6 +25,8 @@ No always-running computer, gateway connection, Railway service, or Supabase pro
 - `/setup-channel kind channel` — moderator-only setup for automatic seasonal, photo, movie-night, and game-night tracking
 - `/automation-status` — show which channels are being watched
 - `/check-in activity` — self-service activity stamp with no moderator approval
+- `/setup-rewards` — create, connect, and synchronize the four Fall reward roles
+- `/chaos-help` — show a short member-friendly guide
 
 Administrators and members with **Manage Server** can award and revoke stamps. Additional moderator role IDs can be configured in `wrangler.jsonc` as a comma-separated `MODERATOR_ROLE_IDS` value.
 
@@ -41,6 +43,8 @@ The Worker checks configured channels once per hour. Use `/setup-channel` once f
 - Reward thresholds are evaluated immediately after every automatic or self-service award.
 
 The bot needs **View Channel**, **Read Message History**, and **Send Messages** in tracked channels. A reward with a Discord role also requires **Manage Roles**, and the bot role must sit above the reward role.
+
+After granting **Manage Roles**, run `/setup-rewards` once. The command creates zero-permission cosmetic roles for First Leaves, Certified Cozy, Fall Main Character, and Fall Chaos Legend, connects them to D1, and synchronizes qualifying existing members.
 
 ## Cloudflare resources
 

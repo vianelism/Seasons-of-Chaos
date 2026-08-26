@@ -46,6 +46,8 @@ Fall 2026 is three months of cozy nonsense, spooky nonsense, and well-fed nonsen
 
 Secret stamps count toward reward totals, but members never need a secret stamp to reach a reward. Rewards should be granted quietly or celebrated according to the member's preference.
 
+The live bot can create four cosmetic, zero-permission Discord roles matching these tiers through `/setup-rewards`. Once connected, qualifying members receive the appropriate role automatically after any scheduled, self-service, or moderator award.
+
 | Threshold | Reward | Slug | Type | Fulfillment |
 |---:|---|---|---|---|
 | 3 Fall stamps | 🍁 **First Leaves** | `first-leaves` | Recognition | Bot unlock message and optional temporary `🍁 First Leaves` Discord role. |

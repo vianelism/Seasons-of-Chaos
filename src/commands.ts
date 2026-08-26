@@ -51,4 +51,10 @@ export const commandData = [
         { name: "Candy discussion", value: "candy-tax-auditor" }, { name: "Brought a dish", value: "i-brought-a-dish" },
         { name: "Gratitude or small win", value: "grateful-ish" }, { name: "Leftovers/recovery", value: "leftovers-legend" },
       )),
+  new SlashCommandBuilder()
+    .setName("setup-rewards")
+    .setDescription("Create and connect automatic Fall reward roles."),
+  new SlashCommandBuilder()
+    .setName("chaos-help")
+    .setDescription("Show how Seasons of Chaos stamps and rewards work."),
 ].map((command) => command.toJSON());

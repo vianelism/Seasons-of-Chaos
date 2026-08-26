@@ -1,0 +1,38 @@
+import { describe, expect, it } from "vitest";
+import { automaticSlugs, secretActivitySlugs } from "./automation.js";
+import type { DiscordMessage } from "./cloudflare-types.js";
+
+function message(timestamp: string, attachments = 0): DiscordMessage {
+  return {
+    id: "1", channel_id: "2", timestamp,
+    author: { id: "3", username: "mom" },
+    attachments: Array.from({ length: attachments }, (_, index) => ({ id: String(index) })),
+  };
+}
+
+describe("Fall 2026 automatic stamps", () => {
+  it.each([
+    ["2026-09-10T12:00:00.000Z", "fall-girl-era"],
+    ["2026-10-10T12:00:00.000Z", "spooky-bitch"],
+    ["2026-11-10T12:00:00.000Z", "stuffed-and-surviving"],
+  ])("awards the monthly participation stamp for %s", (timestamp, slug) => {
+    expect(automaticSlugs("seasonal", message(timestamp))).toContain(slug);
+  });
+
+  it("only awards the Fall photo stamp for an attachment during the season", () => {
+    expect(automaticSlugs("photos", message("2026-09-10T12:00:00.000Z", 1))).toEqual(["pics-or-it-didnt-happen"]);
+    expect(automaticSlugs("photos", message("2026-09-10T12:00:00.000Z"))).toEqual([]);
+    expect(automaticSlugs("photos", message("2026-12-10T12:00:00.000Z", 1))).toEqual([]);
+  });
+
+  it("awards movie and game participation", () => {
+    expect(automaticSlugs("movie-night", message("2026-10-10T12:00:00.000Z"))).toEqual(["roll-the-credits", "boo-crew"]);
+    expect(automaticSlugs("game-night", message("2026-10-10T12:00:00.000Z"))).toEqual(["game-on"]);
+  });
+
+  it("unlocks secret stamps on distinct-day and cross-month milestones", () => {
+    expect(secretActivitySlugs("2026-10", 3, 1)).toEqual(["witch-please"]);
+    expect(secretActivitySlugs("2026-10", 5, 1)).toEqual(["witch-please", "goblin-mode"]);
+    expect(secretActivitySlugs("2026-11", 3, 3)).toEqual(["left-no-crumbs", "i-was-here"]);
+  });
+});
