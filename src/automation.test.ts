@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { automaticSlugs, secretActivitySlugs } from "./automation.js";
+import { automaticSlugs, pollWinners, secretActivitySlugs } from "./automation.js";
 import type { DiscordMessage } from "./cloudflare-types.js";
 
 function message(timestamp: string, attachments = 0): DiscordMessage {
@@ -34,5 +34,21 @@ describe("Fall 2026 automatic stamps", () => {
     expect(secretActivitySlugs("2026-10", 3, 1)).toEqual(["witch-please"]);
     expect(secretActivitySlugs("2026-10", 5, 1)).toEqual(["witch-please", "goblin-mode"]);
     expect(secretActivitySlugs("2026-11", 3, 3)).toEqual(["left-no-crumbs", "i-was-here"]);
+  });
+
+  it("preserves tied poll winners and handles finalized polls without votes", () => {
+    const pollMessage = message("2026-10-18T12:00:00.000Z");
+    pollMessage.poll = {
+      question: { text: "Which date?" }, expiry: "2026-10-18T12:00:00.000Z",
+      answers: [
+        { answer_id: 4, poll_media: { text: "Friday" } },
+        { answer_id: 8, poll_media: { text: "Saturday" } },
+        { answer_id: 12, poll_media: { text: "Sunday" } },
+      ],
+      results: { is_finalized: true, answer_counts: [{ id: 4, count: 3 }, { id: 8, count: 3 }, { id: 12, count: 1 }] },
+    };
+    expect(pollWinners(pollMessage)).toEqual({ winners: ["Friday", "Saturday"], votes: 3 });
+    pollMessage.poll.results = { is_finalized: true, answer_counts: [] };
+    expect(pollWinners(pollMessage)).toEqual({ winners: [], votes: 0 });
   });
 });

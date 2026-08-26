@@ -10,6 +10,17 @@ export interface DiscordMessage {
   id: string; channel_id: string; timestamp: string; content?: string;
   author: DiscordUser & { bot?: boolean }; member?: DiscordMember;
   attachments?: Array<{ id: string }>;
+  poll?: DiscordPoll;
+}
+export interface DiscordPoll {
+  question: { text?: string };
+  answers: Array<{ answer_id: number; poll_media: { text?: string } }>;
+  expiry: string | null;
+  results?: { is_finalized: boolean; answer_counts: Array<{ id: number; count: number; me_voted?: boolean }> };
+}
+export interface EventPollRunRow {
+  guild_id: string; event_id: string; channel_id: string; date_message_id: string; date_poll_expires_at: string;
+  selected_dates: string | null; time_message_id: string | null; time_poll_expires_at: string | null; completed_at: string | null;
 }
 export interface AutomationChannelRow { guild_id: string; kind: AutomationKind; channel_id: string; last_message_id: string | null; configured_at: string; }
 export type AutomationKind = "activities" | "seasonal" | "photos" | "movie-night" | "game-night";

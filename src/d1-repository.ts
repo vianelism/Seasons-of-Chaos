@@ -1,4 +1,4 @@
-import type { AutomationChannelRow, AutomationKind, RewardRow, SeasonRow, StampRow } from "./cloudflare-types.js";
+import type { AutomationChannelRow, AutomationKind, EventPollRunRow, RewardRow, SeasonRow, StampRow } from "./cloudflare-types.js";
 import type { EarnedStamp, Reward, Season, StampDefinition } from "./types.js";
 
 function mapStamp(row: StampRow): StampDefinition {
@@ -52,6 +52,22 @@ export class D1PassportRepository {
 
   async recordActivityPost(guildId: string, activityId: string, channelId: string): Promise<void> {
     await this.db.prepare("INSERT OR IGNORE INTO activity_posts (guild_id,activity_id,channel_id,posted_at) VALUES (?,?,?,?)").bind(guildId, activityId, channelId, new Date().toISOString()).run();
+  }
+
+  async findEventPollRun(guildId: string, eventId: string): Promise<EventPollRunRow | undefined> {
+    return (await this.db.prepare("SELECT * FROM event_poll_runs WHERE guild_id=? AND event_id=?").bind(guildId, eventId).first<EventPollRunRow>()) ?? undefined;
+  }
+
+  async createEventPollRun(guildId: string, eventId: string, channelId: string, messageId: string, expiresAt: string): Promise<void> {
+    await this.db.prepare("INSERT OR IGNORE INTO event_poll_runs (guild_id,event_id,channel_id,date_message_id,date_poll_expires_at) VALUES (?,?,?,?,?)").bind(guildId, eventId, channelId, messageId, expiresAt).run();
+  }
+
+  async recordTimePoll(guildId: string, eventId: string, selectedDates: string[], messageId: string, expiresAt: string): Promise<void> {
+    await this.db.prepare("UPDATE event_poll_runs SET selected_dates=?,time_message_id=?,time_poll_expires_at=? WHERE guild_id=? AND event_id=?").bind(JSON.stringify(selectedDates), messageId, expiresAt, guildId, eventId).run();
+  }
+
+  async completeEventPoll(guildId: string, eventId: string): Promise<void> {
+    await this.db.prepare("UPDATE event_poll_runs SET completed_at=? WHERE guild_id=? AND event_id=?").bind(new Date().toISOString(), guildId, eventId).run();
   }
 
   async updateChannelCursor(guildId: string, kind: AutomationKind, messageId: string): Promise<void> {

@@ -70,6 +70,7 @@ The original September–January event remains the creative brief for the first 
 - The passport never resets; Fall and Winter stamps stack into one lifetime collection and can be viewed by season.
 - `/event-guide` keeps the upcoming automated schedule and the core promise visible inside Discord.
 - The bot automatically posts prompts, bingo-style check-ins, trivia and answer reveals, photo activities, superlative nominations, a free digital Secret Santa activity, movie/game-night prompts, and wrap-up awards nominations. The group still chooses whether and when to turn a movie/game prompt into a live gathering; asynchronous replies always count.
+- Halloween movie night, holiday movie night, and January game night use native Discord polls. Members select every workable date; after the date poll closes, the bot posts a time poll and then summarizes the leading date/time. Ties stay visible, and every poll includes an asynchronous/cannot-attend-live option.
 - Participation remains free, casual, mostly asynchronous, and optional. Late replies, limited participation, lurking, and returning after an absence are all valid; there are no leaderboards or purchase requirements.
 
 ## Cloudflare resources

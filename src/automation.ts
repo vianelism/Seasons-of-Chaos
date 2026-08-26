@@ -3,6 +3,7 @@ import { D1PassportRepository } from "./d1-repository.js";
 import type { Reward, StampDefinition } from "./types.js";
 import { communityEmoji, fetchCommunityEmojis, type CommunityEmojiMap } from "./community-emojis.js";
 import { FALL_2026_ACTIVITIES } from "./config/fall-2026-activities.js";
+import { EVENT_POLLS, EVENT_TIME_OPTIONS, type ScheduledEventPoll } from "./config/event-polls.js";
 
 const API = "https://discord.com/api/v10";
 
@@ -65,10 +66,108 @@ async function processMessage(env: Env, repository: D1PassportRepository, guildI
   return awarded;
 }
 
+function pollPayload(question: string, answers: readonly string[], duration: number): object {
+  return {
+    poll: {
+      question: { text: question },
+      answers: answers.map((text) => ({ poll_media: { text } })),
+      duration,
+      allow_multiselect: true,
+      layout_type: 1,
+    },
+    allowed_mentions: { parse: [] },
+  };
+}
+
+export function pollWinners(message: DiscordMessage): { winners: string[]; votes: number } | undefined {
+  const poll = message.poll;
+  if (!poll?.results?.is_finalized) return undefined;
+  const counts = new Map(poll.results.answer_counts.map((answer) => [answer.id, answer.count]));
+  const votes = Math.max(0, ...counts.values());
+  if (votes === 0) return { winners: [], votes: 0 };
+  return { winners: poll.answers.filter((answer) => (counts.get(answer.answer_id) ?? 0) === votes).map((answer) => answer.poll_media.text).filter((text): text is string => Boolean(text)), votes };
+}
+
+async function postDatePoll(env: Env, repository: D1PassportRepository, guildId: string, channelId: string, event: ScheduledEventPoll): Promise<void> {
+  const response = await discordRequest(env, `/channels/${channelId}/messages`, {
+    method: "POST",
+    body: JSON.stringify({
+      content: `**${event.emoji} Let's plan ${event.name}!**\nSelect **every date that works**. There is no pressure to attend live; the asynchronous option is completely valid.`,
+      ...pollPayload(`Which date(s) work for ${event.name}?`, event.dateOptions, 72),
+    }),
+  });
+  const message = (await response.json()) as DiscordMessage;
+  await repository.createEventPollRun(guildId, event.id, channelId, message.id, message.poll?.expiry || new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString());
+}
+
+async function advanceEventPoll(env: Env, repository: D1PassportRepository, guildId: string, event: ScheduledEventPoll): Promise<void> {
+  const run = await repository.findEventPollRun(guildId, event.id);
+  if (!run || run.completed_at) return;
+  const now = new Date().toISOString();
+  if (!run.time_message_id && run.date_poll_expires_at <= now) {
+    const response = await discordRequest(env, `/channels/${run.channel_id}/messages/${run.date_message_id}`);
+    const dateMessage = (await response.json()) as DiscordMessage;
+    const result = pollWinners(dateMessage);
+    if (!result) return;
+    const liveDates = result.winners.filter((answer) => !answer.toLowerCase().includes("async"));
+    if (result.votes === 0 || liveDates.length === 0) {
+      await discordRequest(env, `/channels/${run.channel_id}/messages`, { method: "POST", body: JSON.stringify({ content: `**${event.emoji} ${event.name} update**\nNo live date won the poll, so this stays asynchronous and gloriously low-pressure. Share recommendations or join whenever works.`, allowed_mentions: { parse: [] } }) });
+      await repository.completeEventPoll(guildId, event.id);
+      return;
+    }
+    const selectedLabel = liveDates.join(" or ");
+    const timeResponse = await discordRequest(env, `/channels/${run.channel_id}/messages`, {
+      method: "POST",
+      body: JSON.stringify({
+        content: `**${event.emoji} ${event.name}: time check**\nThe leading date${liveDates.length === 1 ? " is" : "s are tied: "} **${selectedLabel}**. Select every time that could work for you.`,
+        ...pollPayload(`What time works on ${selectedLabel}?`, EVENT_TIME_OPTIONS, 48),
+      }),
+    });
+    const timeMessage = (await timeResponse.json()) as DiscordMessage;
+    await repository.recordTimePoll(guildId, event.id, liveDates, timeMessage.id, timeMessage.poll?.expiry || new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString());
+    return;
+  }
+  if (run.time_message_id && run.time_poll_expires_at && run.time_poll_expires_at <= now) {
+    const response = await discordRequest(env, `/channels/${run.channel_id}/messages/${run.time_message_id}`);
+    const timeMessage = (await response.json()) as DiscordMessage;
+    const result = pollWinners(timeMessage);
+    if (!result) return;
+    const selectedDates = run.selected_dates ? (JSON.parse(run.selected_dates) as string[]) : [];
+    const answer = result.winners.length ? result.winners.join(" or ") : "no single live time";
+    await discordRequest(env, `/channels/${run.channel_id}/messages`, { method: "POST", body: JSON.stringify({ content: `**${event.emoji} ${event.name} poll result**\nBest date${selectedDates.length === 1 ? "" : "s"}: **${selectedDates.join(" or ") || "asynchronous"}**\nBest time: **${answer}**\n\nThis is a suggestion, not a summons. Adjust in the replies if real life changes the plan.`, allowed_mentions: { parse: [] } }) });
+    await repository.completeEventPoll(guildId, event.id);
+  }
+}
+
+async function runEventPolls(env: Env, repository: D1PassportRepository, channels: Awaited<ReturnType<D1PassportRepository["listAutomationChannels"]>>): Promise<number> {
+  let updates = 0;
+  const now = new Date().toISOString();
+  for (const guildId of new Set(channels.map((channel) => channel.guild_id))) {
+    for (const event of EVENT_POLLS) {
+      const channel = channels.find((item) => item.guild_id === guildId && item.kind === event.kind);
+      if (!channel || event.datePollAt < channel.configured_at) continue;
+      try {
+        const existing = await repository.findEventPollRun(guildId, event.id);
+        if (!existing && event.datePollAt <= now) {
+          await postDatePoll(env, repository, guildId, channel.channel_id, event);
+          updates += 1;
+        } else if (existing && !existing.completed_at) {
+          await advanceEventPoll(env, repository, guildId, event);
+          updates += 1;
+        }
+      } catch (error) {
+        console.error(JSON.stringify({ event: "event_poll_failed", guildId, eventId: event.id, error: error instanceof Error ? error.message : String(error) }));
+      }
+    }
+  }
+  return updates;
+}
+
 export async function runAutomation(env: Env): Promise<void> {
   if (!env.DISCORD_TOKEN) throw new Error("DISCORD_TOKEN is required for automatic tracking");
   const repository = new D1PassportRepository(env.DB);
   const channels = await repository.listAutomationChannels();
+  const pollUpdates = await runEventPolls(env, repository, channels);
   let activityPosts = 0;
   const now = new Date().toISOString();
   for (const channel of channels.filter((row) => row.kind === "activities")) {
@@ -116,5 +215,5 @@ export async function runAutomation(env: Env): Promise<void> {
       console.error(JSON.stringify({ event: "automation_channel_failed", guildId: channel.guild_id, kind: channel.kind, error: error instanceof Error ? error.message : String(error) }));
     }
   }
-  console.log(JSON.stringify({ event: "automation_complete", channels: channels.length, activityPosts, awards }));
+  console.log(JSON.stringify({ event: "automation_complete", channels: channels.length, activityPosts, pollUpdates, awards }));
 }

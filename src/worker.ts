@@ -5,6 +5,7 @@ import type { Season, StampDefinition } from "./types.js";
 import { assignRewardRole, discordRequest, runAutomation } from "./automation.js";
 import { COMMUNITY_EMOJI_NAMES, COMMUNITY_EMOTE_GROUPS, communityEmoji, communityEmojiId, fetchCommunityEmojis, type CommunityEmojiMap } from "./community-emojis.js";
 import { FALL_2026_ACTIVITIES } from "./config/fall-2026-activities.js";
+import { EVENT_POLLS } from "./config/event-polls.js";
 
 const PING = 1, APPLICATION_COMMAND = 2, AUTOCOMPLETE = 4, CHANNEL_MESSAGE = 4, AUTOCOMPLETE_RESULT = 8, EPHEMERAL = 64;
 const ADMINISTRATOR = 1n << 3n, MANAGE_GUILD = 1n << 5n;
@@ -199,6 +200,7 @@ function chaosHelp(emojis: CommunityEmojiMap): Response {
 async function eventGuide(interaction: DiscordInteraction, repository: D1PassportRepository, emojis: CommunityEmojiMap): Promise<Response> {
   const now = new Date().toISOString();
   const upcoming = FALL_2026_ACTIVITIES.filter((activity) => activity.scheduledAt > now).slice(0, 5);
+  const upcomingPoll = EVENT_POLLS.find((event) => event.datePollAt > now);
   const activityChannel = interaction.guild_id ? (await repository.listAutomationChannels(interaction.guild_id)).find((row) => row.kind === "activities") : undefined;
   return message("", false, [{
     color: 0xD86C32,
@@ -207,6 +209,7 @@ async function eventGuide(interaction: DiscordInteraction, repository: D1Passpor
     fields: [
       { name: "Up next", value: upcoming.length ? upcoming.map((activity) => `**<t:${Math.floor(new Date(activity.scheduledAt).getTime() / 1000)}:D>** — ${activity.title}`).join("\n") : "The Fall Into Chaos schedule is complete. We survived." },
       { name: "What runs automatically", value: `${FALL_2026_ACTIVITIES.length} scheduled posts: September kickoff activities, 31 daily Halloween prompts, Friendsgiving, 12 Days of Discord, Holiday Chaos, and January's wrap-up.` },
+      { name: "Flexible live events", value: upcomingPoll ? `Next planning poll: **${upcomingPoll.emoji} ${upcomingPoll.name}** on <t:${Math.floor(new Date(upcomingPoll.datePollAt).getTime() / 1000)}:D>. The bot asks for all workable dates, then follows with a time poll.` : "All scheduled movie and game planning polls are complete." },
       { name: `${communityEmoji(emojis, "passportchaos", "🛂")} Passport connection`, value: "The bot separately tracks configured conversation, photo, movie-night, and game-night channels, plus self-service check-ins and surprise achievements." },
       { name: "❤️ Most importantly", value: "This is free, casual, and mostly asynchronous. Participate a lot, once, late, or after disappearing for weeks. Lurking is valid. There are no purchases, leaderboards, or participation requirements." },
     ],
