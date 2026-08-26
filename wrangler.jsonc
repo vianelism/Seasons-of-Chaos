@@ -1,0 +1,21 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "seasons-of-chaos",
+  "main": "src/worker.ts",
+  "compatibility_date": "2026-08-26",
+  "compatibility_flags": ["nodejs_compat"],
+  "workers_dev": true,
+  "preview_urls": false,
+  "d1_databases": [{
+    "binding": "DB",
+    "database_name": "fall-into-chaos",
+    "database_id": "6d2c16c7-031c-40f6-81ac-0e921805b11a",
+    "migrations_dir": "migrations"
+  }],
+  "vars": { "MODERATOR_ROLE_IDS": "" },
+  "observability": {
+    "enabled": true,
+    "logs": { "head_sampling_rate": 1 },
+    "traces": { "enabled": true, "head_sampling_rate": 0.1 }
+  }
+}

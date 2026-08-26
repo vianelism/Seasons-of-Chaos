@@ -1,0 +1,10 @@
+node_modules/
+dist/
+work/
+.wrangler/
+.env
+data/*.db
+data/*.db-*
+*.log
+*.cpuprofile
+.DS_Store

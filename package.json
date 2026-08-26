@@ -1,0 +1,33 @@
+{
+  "name": "seasons-of-chaos-discord-app",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A year-round Cloudflare-hosted seasonal passport app for a Discord community.",
+  "type": "module",
+  "scripts": {
+    "dev": "WRANGLER_LOG_PATH=./work/wrangler.log wrangler dev",
+    "start": "WRANGLER_LOG_PATH=./work/wrangler.log wrangler dev",
+    "build": "tsc -p tsconfig.json",
+    "check": "tsc -p tsconfig.json --noEmit",
+    "deploy:commands": "tsx src/deploy-commands.ts",
+    "deploy": "WRANGLER_LOG_PATH=./work/wrangler.log wrangler deploy",
+    "db:migrate:local": "WRANGLER_LOG_PATH=./work/wrangler.log wrangler d1 migrations apply DB --local",
+    "db:migrate:remote": "WRANGLER_LOG_PATH=./work/wrangler.log wrangler d1 migrations apply DB --remote",
+    "test": "vitest run"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "dependencies": {
+    "discord.js": "^14.22.1",
+    "discord-interactions": "^4.4.0",
+    "dotenv": "^17.2.2"
+  },
+  "devDependencies": {
+    "@types/node": "^24.3.0",
+    "tsx": "^4.20.5",
+    "typescript": "^5.9.2",
+    "vitest": "^3.2.4",
+    "wrangler": "^4.34.0"
+  }
+}
