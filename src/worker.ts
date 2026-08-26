@@ -3,7 +3,7 @@ import type { AutomationKind, DiscordInteraction, DiscordMember, DiscordOption, 
 import { D1PassportRepository } from "./d1-repository.js";
 import type { Season, StampDefinition } from "./types.js";
 import { assignRewardRole, discordRequest, runAutomation } from "./automation.js";
-import { communityEmoji, fetchCommunityEmojis, type CommunityEmojiMap } from "./community-emojis.js";
+import { COMMUNITY_EMOJI_NAMES, communityEmoji, fetchCommunityEmojis, type CommunityEmojiMap } from "./community-emojis.js";
 
 const PING = 1, APPLICATION_COMMAND = 2, AUTOCOMPLETE = 4, CHANNEL_MESSAGE = 4, AUTOCOMPLETE_RESULT = 8, EPHEMERAL = 64;
 const ADMINISTRATOR = 1n << 3n, MANAGE_GUILD = 1n << 5n;
@@ -189,8 +189,24 @@ function chaosHelp(emojis: CommunityEmojiMap): Response {
     { name: "Automatic stamps", value: "The bot checks the configured seasonal, photo, movie-night, and game-night channels once per hour." },
     { name: "Activity check-ins", value: "Use **/check-in** for cozy moments, treats, costumes, gratitude, and other activities the bot cannot identify safely." },
     { name: "Your collection", value: "Use **/passport** to see your stamps, **/stamps** to browse public achievements, and **/rewards** for reward progress." },
+    { name: "Community emojis", value: "Use **/emojis** to browse the uploaded emoji drawer or post one by name." },
     { name: "Secret achievements", value: "Some stamps stay hidden until the passport office decides you have caused enough seasonal activity." },
   ], footer: { text: "No leaderboard • No required participation • Every season stacks" } }]);
+}
+
+function emojisCommand(interaction: DiscordInteraction, emojis: CommunityEmojiMap): Response {
+  const selected = String(option(interaction.data?.options, "name") || "").toLowerCase();
+  if (selected) {
+    if (!COMMUNITY_EMOJI_NAMES.includes(selected as (typeof COMMUNITY_EMOJI_NAMES)[number])) return message("That is not a Seasons of Chaos emoji name.", true);
+    const rendered = emojis.get(selected);
+    if (!rendered) return message(`:${selected}: has not been uploaded to this Discord server yet.`, true);
+    return message(`${rendered}  **:${selected}:**`);
+  }
+  const available = COMMUNITY_EMOJI_NAMES.filter((name) => emojis.has(name));
+  const description = available.length
+    ? available.map((name) => `${emojis.get(name)} \`:${name}:\``).join("  ")
+    : "No Seasons of Chaos custom emojis are uploaded to this server yet. Unicode fallbacks remain active.";
+  return message("", false, [{ color: 0x7A3E65, title: `${communityEmoji(emojis, "chaos", "✨")} Community Emoji Drawer`, description, footer: { text: "Use /emojis name: to post one" } }]);
 }
 
 async function autocomplete(interaction: DiscordInteraction, repository: D1PassportRepository, env: Env): Promise<Response> {
@@ -198,6 +214,9 @@ async function autocomplete(interaction: DiscordInteraction, repository: D1Passp
   if (["passport", "stamps"].includes(interaction.data?.name || "")) {
     const seasons = await repository.listSeasons();
     return json({ type: AUTOCOMPLETE_RESULT, data: { choices: seasons.filter((season) => `${season.name} ${season.slug}`.toLowerCase().includes(search)).slice(0, 25).map((season) => ({ name: `${season.emoji} ${season.name}`, value: season.slug })) } });
+  }
+  if (interaction.data?.name === "emojis") {
+    return json({ type: AUTOCOMPLETE_RESULT, data: { choices: COMMUNITY_EMOJI_NAMES.filter((name) => name.includes(search)).slice(0, 25).map((name) => ({ name: `:${name}:`, value: name })) } });
   }
   if (!isModerator(interaction, env)) return json({ type: AUTOCOMPLETE_RESULT, data: { choices: [] } });
   let choices = await repository.listActiveStamps();
@@ -226,6 +245,7 @@ async function handleInteraction(interaction: DiscordInteraction, env: Env): Pro
     case "check-in": return checkIn(interaction, repository, env, emojis);
     case "setup-rewards": return setupRewards(interaction, repository, env);
     case "chaos-help": return chaosHelp(emojis);
+    case "emojis": return emojisCommand(interaction, emojis);
     default: return message("The passport office cannot find that form.", true);
   }
 }

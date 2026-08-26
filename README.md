@@ -27,6 +27,7 @@ No always-running computer, gateway connection, Railway service, or Supabase pro
 - `/check-in activity` — self-service activity stamp with no moderator approval
 - `/setup-rewards` — create, connect, and synchronize the four Fall reward roles
 - `/chaos-help` — show a short member-friendly guide
+- `/emojis [name]` — browse uploaded community emojis or post one in the channel
 
 Administrators and members with **Manage Server** can award and revoke stamps. Additional moderator role IDs can be configured in `wrangler.jsonc` as a comma-separated `MODERATOR_ROLE_IDS` value.
 
@@ -48,7 +49,7 @@ After granting **Manage Roles**, run `/setup-rewards` once. The command creates 
 
 ## Community emojis
 
-The bot looks up the server's custom emojis by name at runtime and uses them in passport, stamp, reward, automation, and help messages. Current supported presentation names include `passport`, `passportchaos`, `stampearned`, `secretunlocked`, `chaosapproved`, `chaos`, `done`, `lurking`, `justwatching`, and `chaoscrew`. Unicode fallbacks remain in place, so emojis can be uploaded gradually without breaking bot responses or requiring numeric IDs in source control.
+The bot looks up the server's custom emojis by name at runtime and uses them in passport, stamp, reward, automation, and help messages. Members can run `/emojis` to browse the ones currently uploaded or `/emojis name:` to post one. Autocomplete includes all 30 planned community emoji names. Unicode fallbacks remain in place, so emojis can be uploaded gradually without breaking bot responses or requiring numeric IDs in source control.
 
 ## Cloudflare resources
 

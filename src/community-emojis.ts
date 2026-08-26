@@ -7,6 +7,15 @@ interface GuildEmoji {
 
 export type CommunityEmojiMap = ReadonlyMap<string, string>;
 
+export const COMMUNITY_EMOJI_NAMES = [
+  "chaos", "momfuel", "caffeinate", "omgyes", "passport", "stampearned",
+  "done", "imfine", "lurking", "justwatching", "yapping", "girlpls",
+  "bet", "nope", "dead", "receipts", "waiting", "chaosapproved",
+  "passportchaos", "secretunlocked", "excuseme", "absolutelynot", "sendhelp",
+  "hereforthedrama", "survived", "gotyou", "overit", "cozy", "chaoscrew",
+  "caffeinechaos",
+] as const;
+
 export async function fetchCommunityEmojis(env: Env, guildId: string): Promise<CommunityEmojiMap> {
   try {
     const response = await fetch(`https://discord.com/api/v10/guilds/${guildId}/emojis`, {

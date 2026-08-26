@@ -57,4 +57,8 @@ export const commandData = [
   new SlashCommandBuilder()
     .setName("chaos-help")
     .setDescription("Show how Seasons of Chaos stamps and rewards work."),
+  new SlashCommandBuilder()
+    .setName("emojis")
+    .setDescription("Browse or post a Seasons of Chaos community emoji.")
+    .addStringOption((option) => option.setName("name").setDescription("Emoji to post; leave blank to browse").setAutocomplete(true)),
 ].map((command) => command.toJSON());
