@@ -22,8 +22,25 @@ No always-running computer, gateway connection, Railway service, or Supabase pro
 - `/rewards [user]` — view seasonal and lifetime reward progress
 - `/award user stamp [announce]` — moderator-only award with duplicate prevention
 - `/revoke user stamp` — moderator-only correction
+- `/setup-channel kind channel` — moderator-only setup for automatic seasonal, photo, movie-night, and game-night tracking
+- `/automation-status` — show which channels are being watched
+- `/check-in activity` — self-service activity stamp with no moderator approval
 
 Administrators and members with **Manage Server** can award and revoke stamps. Additional moderator role IDs can be configured in `wrangler.jsonc` as a comma-separated `MODERATOR_ROLE_IDS` value.
+
+## Automatic Fall 2026 tracking
+
+The Worker checks configured channels every five minutes. Use `/setup-channel` once for each channel type you use. A single Discord channel may be selected for more than one type.
+
+- Seasonal conversation awards the monthly participation stamps.
+- Photo sharing awards `Pics or It Didn't Happen` when a message contains an attachment.
+- Movie-night and game-night activity awards their event stamps.
+- Activity on several different days unlocks rule-based secret achievements.
+- Participating across September, October, and November unlocks `I Was Here`.
+- `/check-in` handles activities the bot cannot infer reliably, such as a costume, seasonal treat, or gratitude post.
+- Reward thresholds are evaluated immediately after every automatic or self-service award.
+
+The bot needs **View Channel**, **Read Message History**, and **Send Messages** in tracked channels. A reward with a Discord role also requires **Manage Roles**, and the bot role must sit above the reward role.
 
 ## Cloudflare resources
 
@@ -32,7 +49,7 @@ Administrators and members with **Manage Server** can award and revoke stamps. A
 - D1 database: `fall-into-chaos` (original internal resource name; shared by every season)
 - Production URL: `https://seasons-of-chaos.v-martinez1.workers.dev`
 - Region: Eastern North America
-- Secret: `DISCORD_PUBLIC_KEY`
+- Secrets: `DISCORD_PUBLIC_KEY`, `DISCORD_TOKEN`
 
 The Discord application's **Interactions Endpoint URL** must be the production Worker URL.
 
@@ -100,7 +117,7 @@ Upload the Discord verification key with:
 npx wrangler secret put DISCORD_PUBLIC_KEY
 ```
 
-Do not place secrets in `wrangler.jsonc`, source files, or GitHub. The Discord bot token is only needed locally to register commands; the production Worker does not need it.
+Do not place secrets in `wrangler.jsonc`, source files, or GitHub. The production Worker uses the bot token to scan configured channels and announce automatic awards.
 
 ## Verification and operations
 

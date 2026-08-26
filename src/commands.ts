@@ -28,4 +28,27 @@ export const commandData = [
     .setDescription("Remove a mistakenly awarded passport stamp.")
     .addUserOption((option) => option.setName("user").setDescription("The member whose stamp should be removed").setRequired(true))
     .addStringOption((option) => option.setName("stamp").setDescription("The stamp to remove").setAutocomplete(true).setRequired(true)),
+  new SlashCommandBuilder()
+    .setName("setup-channel")
+    .setDescription("Choose a channel for automatic stamp tracking.")
+    .addStringOption((option) => option.setName("kind").setDescription("What happens in this channel").setRequired(true)
+      .addChoices(
+        { name: "Seasonal conversation", value: "seasonal" }, { name: "Photo sharing", value: "photos" },
+        { name: "Movie night", value: "movie-night" }, { name: "Game night", value: "game-night" },
+      ))
+    .addChannelOption((option) => option.setName("channel").setDescription("Channel to watch").setRequired(true)),
+  new SlashCommandBuilder()
+    .setName("automation-status")
+    .setDescription("Show which channels the passport office watches."),
+  new SlashCommandBuilder()
+    .setName("check-in")
+    .setDescription("Claim an activity stamp automatically—no moderator approval needed.")
+    .addStringOption((option) => option.setName("activity").setDescription("What you joined or shared").setRequired(true)
+      .addChoices(
+        { name: "Cozy moment", value: "cozy-af" }, { name: "Outdoor fall moment", value: "outside-ish" },
+        { name: "Sweater/weather survival", value: "sweater-weather-survivor" }, { name: "Seasonal treat", value: "little-treat-committee" },
+        { name: "Pumpkin or craft", value: "pumpkin-problems" }, { name: "Costume", value: "costume-department" },
+        { name: "Candy discussion", value: "candy-tax-auditor" }, { name: "Brought a dish", value: "i-brought-a-dish" },
+        { name: "Gratitude or small win", value: "grateful-ish" }, { name: "Leftovers/recovery", value: "leftovers-legend" },
+      )),
 ].map((command) => command.toJSON());

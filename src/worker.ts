@@ -1,7 +1,8 @@
 import { verifyKey } from "discord-interactions";
-import type { DiscordInteraction, DiscordMember, DiscordOption, DiscordUser } from "./cloudflare-types.js";
+import type { AutomationKind, DiscordInteraction, DiscordMember, DiscordOption, DiscordUser } from "./cloudflare-types.js";
 import { D1PassportRepository } from "./d1-repository.js";
 import type { Season, StampDefinition } from "./types.js";
+import { runAutomation } from "./automation.js";
 
 const PING = 1, APPLICATION_COMMAND = 2, AUTOCOMPLETE = 4, CHANNEL_MESSAGE = 4, AUTOCOMPLETE_RESULT = 8, EPHEMERAL = 64;
 const ADMINISTRATOR = 1n << 3n, MANAGE_GUILD = 1n << 5n;
@@ -101,6 +102,41 @@ async function revoke(interaction: DiscordInteraction, repository: D1PassportRep
   return message(removed ? `${stamp.emoji} **${stamp.name}** was removed from ${name}'s passport. Paperwork corrected.` : `${name} did not have that stamp, so nothing changed.`, true);
 }
 
+const AUTOMATION_KINDS = new Set<AutomationKind>(["seasonal", "photos", "movie-night", "game-night"]);
+const CHECK_IN_SLUGS = new Set(["cozy-af", "outside-ish", "sweater-weather-survivor", "little-treat-committee", "pumpkin-problems", "costume-department", "candy-tax-auditor", "i-brought-a-dish", "grateful-ish", "leftovers-legend"]);
+
+async function setupChannel(interaction: DiscordInteraction, repository: D1PassportRepository, env: Env): Promise<Response> {
+  if (!isModerator(interaction, env)) return message("Channel setup is for moderators only. The passport office remains annoyingly secure. 🗃️", true);
+  const kind = String(option(interaction.data?.options, "kind")) as AutomationKind;
+  const channelId = String(option(interaction.data?.options, "channel") || "");
+  if (!interaction.guild_id || !AUTOMATION_KINDS.has(kind) || !channelId) return message("I could not understand that channel setup.", true);
+  await repository.configureChannel(interaction.guild_id, kind, channelId, interaction.member?.user?.id || interaction.user?.id || "unknown");
+  return message(`✅ Automatic **${kind}** tracking is now watching <#${channelId}>. New activity is checked every five minutes.`, true);
+}
+
+async function automationStatus(interaction: DiscordInteraction, repository: D1PassportRepository): Promise<Response> {
+  if (!interaction.guild_id) return message("Automation status only works inside a server.", true);
+  const configured = await repository.listAutomationChannels(interaction.guild_id);
+  const lines = (["seasonal", "photos", "movie-night", "game-night"] as AutomationKind[]).map((kind) => {
+    const found = configured.find((item) => item.kind === kind);
+    return `${found ? "✅" : "⬜"} **${kind}** — ${found ? `<#${found.channel_id}>` : "not configured"}`;
+  });
+  return message("", false, [{ color: 0x4E7A5B, title: "⚙️ Automatic Stamp Tracking", description: `${lines.join("\n")}\n\nThe bot checks configured channels every five minutes. Members can use **/check-in** for activities a message cannot identify safely.` }]);
+}
+
+async function checkIn(interaction: DiscordInteraction, repository: D1PassportRepository): Promise<Response> {
+  const slug = String(option(interaction.data?.options, "activity") || "");
+  const user = interaction.member?.user || interaction.user;
+  if (!interaction.guild_id || !user || !CHECK_IN_SLUGS.has(slug)) return message("That check-in could not be processed.", true);
+  const stamp = await repository.findActiveStamp(slug);
+  if (!stamp) return message("That stamp is not active right now.", true);
+  const created = await repository.award(interaction.guild_id, user.id, displayName(user, interaction.member), slug, "self-check-in");
+  if (!created) return message(`${stamp.emoji} You already have **${stamp.name}**. No duplicate paperwork required.`, true);
+  const rewards = await repository.claimUnlockedRewards(interaction.guild_id, user.id);
+  const rewardText = rewards.length ? `\n\n**REWARD UNLOCKED 🎁** ${rewards.map((reward) => `${reward.emoji} **${reward.name}**`).join(", ")}` : "";
+  return message(`**STAMP EARNED 🎉**\n${stamp.emoji} <@${user.id}> earned **${stamp.name}**!\n*${stamp.announcement || "Officially documented for absolutely no important reason."}*${rewardText}`);
+}
+
 async function autocomplete(interaction: DiscordInteraction, repository: D1PassportRepository, env: Env): Promise<Response> {
   const search = String(interaction.data?.options?.find((item) => item.focused)?.value || "").toLowerCase();
   if (["passport", "stamps"].includes(interaction.data?.name || "")) {
@@ -128,6 +164,9 @@ async function handleInteraction(interaction: DiscordInteraction, env: Env): Pro
     case "rewards": return rewards(interaction, repository);
     case "award": return award(interaction, repository, env);
     case "revoke": return revoke(interaction, repository, env);
+    case "setup-channel": return setupChannel(interaction, repository, env);
+    case "automation-status": return automationStatus(interaction, repository);
+    case "check-in": return checkIn(interaction, repository);
     default: return message("The passport office cannot find that form.", true);
   }
 }
@@ -147,5 +186,8 @@ export default {
       console.error(JSON.stringify({ message: "interaction failed", error: error instanceof Error ? error.message : String(error) }));
       return message("The passport office experienced a tiny paperwork fire. Please try again. 🔥", true);
     }
+  },
+  async scheduled(_controller: ScheduledController, env: Env, ctx: ExecutionContext): Promise<void> {
+    ctx.waitUntil(runAutomation(env));
   },
 } satisfies ExportedHandler<Env>;

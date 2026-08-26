@@ -1,4 +1,4 @@
-import type { RewardRow, SeasonRow, StampRow } from "./cloudflare-types.js";
+import type { AutomationChannelRow, AutomationKind, RewardRow, SeasonRow, StampRow } from "./cloudflare-types.js";
 import type { EarnedStamp, Reward, Season, StampDefinition } from "./types.js";
 
 function mapStamp(row: StampRow): StampDefinition {
@@ -36,6 +36,32 @@ export class D1PassportRepository {
     return result.meta.changes === 1;
   }
 
+  async configureChannel(guildId: string, kind: AutomationKind, channelId: string, configuredBy: string): Promise<void> {
+    await this.db.prepare("INSERT INTO automation_channels (guild_id,kind,channel_id,configured_by,configured_at) VALUES (?,?,?,?,?) ON CONFLICT (guild_id,kind) DO UPDATE SET channel_id=excluded.channel_id,last_message_id=NULL,configured_by=excluded.configured_by,configured_at=excluded.configured_at").bind(guildId, kind, channelId, configuredBy, new Date().toISOString()).run();
+  }
+
+  async listAutomationChannels(guildId?: string): Promise<AutomationChannelRow[]> {
+    const statement = this.db.prepare(guildId ? "SELECT guild_id,kind,channel_id,last_message_id FROM automation_channels WHERE guild_id=? ORDER BY kind" : "SELECT guild_id,kind,channel_id,last_message_id FROM automation_channels ORDER BY guild_id,kind");
+    const result = await (guildId ? statement.bind(guildId) : statement).all<AutomationChannelRow>();
+    return result.results;
+  }
+
+  async updateChannelCursor(guildId: string, kind: AutomationKind, messageId: string): Promise<void> {
+    await this.db.prepare("UPDATE automation_channels SET last_message_id=? WHERE guild_id=? AND kind=?").bind(messageId, guildId, kind).run();
+  }
+
+  async recordActivityDay(guildId: string, userId: string, timestamp: string): Promise<{ monthDays: number; activeMonths: number }> {
+    const day = timestamp.slice(0, 10), month = timestamp.slice(0, 7);
+    await this.db.prepare("INSERT OR IGNORE INTO activity_days (guild_id,user_id,activity_date,activity_month) VALUES (?,?,?,?)").bind(guildId, userId, day, month).run();
+    const counts = await this.db.batch([
+      this.db.prepare("SELECT COUNT(*) AS count FROM activity_days WHERE guild_id=? AND user_id=? AND activity_month=?").bind(guildId, userId, month),
+      this.db.prepare("SELECT COUNT(DISTINCT activity_month) AS count FROM activity_days WHERE guild_id=? AND user_id=? AND activity_month BETWEEN '2026-09' AND '2026-11'").bind(guildId, userId),
+    ]);
+    const dayCount = counts[0]?.results[0] as { count?: number } | undefined;
+    const monthCount = counts[1]?.results[0] as { count?: number } | undefined;
+    return { monthDays: Number(dayCount?.count ?? 0), activeMonths: Number(monthCount?.count ?? 0) };
+  }
+
   async listSeasons(): Promise<Season[]> {
     const result = await this.db.prepare("SELECT * FROM seasons ORDER BY sort_order").all<SeasonRow>();
     return result.results.map((row) => ({ slug: row.slug, name: row.name, emoji: row.emoji, description: row.description, startsOn: row.starts_on, endsOn: row.ends_on, status: row.status, sortOrder: row.sort_order }));
@@ -49,5 +75,16 @@ export class D1PassportRepository {
   async listRewards(): Promise<Reward[]> {
     const result = await this.db.prepare("SELECT * FROM rewards WHERE active=1 ORDER BY season_slug IS NULL, season_slug, threshold").all<RewardRow>();
     return result.results.map((row) => ({ slug: row.slug, name: row.name, emoji: row.emoji, description: row.description, threshold: row.threshold, seasonSlug: row.season_slug ?? undefined, roleRewardId: row.role_reward_id ?? undefined, active: Boolean(row.active) }));
+  }
+
+  async claimUnlockedRewards(guildId: string, userId: string): Promise<Reward[]> {
+    const unlocked: Reward[] = [];
+    for (const reward of await this.listRewards()) {
+      const count = (await this.getEarned(guildId, userId, reward.seasonSlug)).length;
+      if (count < reward.threshold) continue;
+      const result = await this.db.prepare("INSERT OR IGNORE INTO reward_unlocks (guild_id,user_id,reward_slug,unlocked_at) VALUES (?,?,?,?)").bind(guildId, userId, reward.slug, new Date().toISOString()).run();
+      if (result.meta.changes === 1) unlocked.push(reward);
+    }
+    return unlocked;
   }
 }
