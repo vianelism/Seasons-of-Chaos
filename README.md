@@ -30,8 +30,16 @@ No always-running computer, gateway connection, Railway service, or Supabase pro
 - `/event-guide` — show the next items from the live September–January activity schedule
 - `/emotes [name]` — browse uploaded community emotes or post one in the channel
 - `/add-emote name` — moderator-only copy of an application emote into the server's normal emote picker
+- `/create-activity title prompt channel [poll-options] [poll-hours]` — moderator-only custom activity or native Discord poll
+- `/schedule-event name date time duration location [timezone] [description]` — moderator-only event in Discord's server calendar
 
-Administrators and members with **Manage Server** can award and revoke stamps. Additional moderator role IDs can be configured in `wrangler.jsonc` as a comma-separated `MODERATOR_ROLE_IDS` value.
+Administrators and members with **Manage Server** can use moderator commands. Additional moderator role IDs can be configured in `wrangler.jsonc` as a comma-separated `MODERATOR_ROLE_IDS` value.
+
+### Custom activities and calendar events
+
+- `/create-activity` posts immediately in the selected channel. Leave `poll-options` blank for a normal prompt, or enter 2–10 answers separated with `|` for a multiple-choice Discord poll. The bot needs **View Channel**, **Send Messages**, and **Send Polls** when a poll is included.
+- `/schedule-event` creates an external Discord Scheduled Event in the server's Events/calendar area. Enter `date` as `YYYY-MM-DD`, `time` as 24-hour `HH:MM`, duration in minutes, and a location such as a voice channel name or website. Eastern is the default timezone; Central, Mountain, and Pacific are also available. The bot needs **Create Events** permission.
+- Both kinds are recorded in D1, providing persistent history and a foundation for future editing, cancellation, and reusable templates. They do not replace the preloaded seasonal schedule.
 
 ## Automatic Fall 2026 tracking
 
@@ -51,6 +59,7 @@ The Worker checks configured channels once per hour. Use `/setup-channel` once f
 - `/check-in` handles activities the bot cannot infer reliably, such as a costume, seasonal treat, or gratitude post.
 - Reward thresholds are evaluated immediately after every automatic or self-service award.
 - Automatic awards earned during the same hourly run are grouped by stamp and announcement channel. If several members earn the same stamp, the bot posts one combined announcement instead of one message per member.
+- Stamp-award footers rotate through playful approval phrases, with stamp-specific lines included in the rotation, so routine awards do not sound copied and pasted.
 
 The bot needs **View Channel**, **Read Message History**, and **Send Messages** in tracked channels. A reward with a Discord role also requires **Manage Roles**, and the bot role must sit above the reward role.
 

@@ -1,18 +1,20 @@
 import { verifyKey } from "discord-interactions";
-import type { AutomationKind, DiscordEmoji, DiscordInteraction, DiscordMember, DiscordOption, DiscordRole, DiscordUser } from "./cloudflare-types.js";
+import type { AutomationKind, DiscordEmoji, DiscordInteraction, DiscordMember, DiscordOption, DiscordRole, DiscordScheduledEvent, DiscordUser } from "./cloudflare-types.js";
 import { D1PassportRepository } from "./d1-repository.js";
 import type { Season, StampDefinition } from "./types.js";
 import { assignRewardRole, discordRequest, runAutomation } from "./automation.js";
 import { COMMUNITY_EMOJI_NAMES, COMMUNITY_EMOTE_GROUPS, communityEmoji, communityEmojiId, fetchCommunityEmojis, type CommunityEmojiMap } from "./community-emojis.js";
 import { FALL_2026_ACTIVITIES } from "./config/fall-2026-activities.js";
 import { EVENT_POLLS } from "./config/event-polls.js";
+import { customPollAnswers, localEventTime, type EventTimezone } from "./event-tools.js";
+import { approvalPhrase } from "./phrasing.js";
 
 const PING = 1, APPLICATION_COMMAND = 2, AUTOCOMPLETE = 4, CHANNEL_MESSAGE = 4, AUTOCOMPLETE_RESULT = 8, EPHEMERAL = 64;
 const ADMINISTRATOR = 1n << 3n, MANAGE_GUILD = 1n << 5n;
 const json = (body: unknown, status = 200) => Response.json(body, { status });
 const message = (content: string, ephemeral = false, embeds?: unknown[]) => json({ type: CHANNEL_MESSAGE, data: { content, embeds, flags: ephemeral ? EPHEMERAL : undefined } });
 
-function option(options: DiscordOption[] | undefined, name: string): string | boolean | undefined { return options?.find((item) => item.name === name)?.value; }
+function option(options: DiscordOption[] | undefined, name: string): string | boolean | number | undefined { return options?.find((item) => item.name === name)?.value; }
 function displayName(user: DiscordUser, member?: DiscordMember): string { return member?.nick || user.global_name || user.username; }
 function avatarUrl(user: DiscordUser): string | undefined { return user.avatar ? `https://cdn.discordapp.com/avatars/${user.id}/${user.avatar}.png?size=128` : undefined; }
 function isModerator(interaction: DiscordInteraction, env: Env): boolean {
@@ -95,7 +97,7 @@ async function award(interaction: DiscordInteraction, repository: D1PassportRepo
   for (const reward of unlocked) await assignRewardRole(env, interaction.guild_id, user.id, reward);
   const announce = option(interaction.data?.options, "announce") !== false;
   const rewardText = unlocked.length ? `\n\n**REWARD UNLOCKED ${communityEmoji(emojis, "secretunlocked", "🎁")}** ${unlocked.map((reward) => `${reward.emoji} **${reward.name}**`).join(", ")}` : "";
-  return message(`**STAMP EARNED ${communityEmoji(emojis, "stampearned", "🎉")}**\n${stamp.emoji} <@${user.id}> earned the **${stamp.name}** passport stamp!${stamp.announcement ? `\n*${stamp.announcement}*` : `\n*${communityEmoji(emojis, "chaosapproved", "✅")} The passport office has approved this nonsense.*`}${rewardText}`, !announce);
+  return message(`**STAMP EARNED ${communityEmoji(emojis, "stampearned", "🎉")}**\n${stamp.emoji} <@${user.id}> earned the **${stamp.name}** passport stamp!\n*${communityEmoji(emojis, "chaosapproved", "✅")} ${approvalPhrase(stamp.announcement)}*${rewardText}`, !announce);
 }
 
 async function revoke(interaction: DiscordInteraction, repository: D1PassportRepository, env: Env): Promise<Response> {
@@ -141,7 +143,76 @@ async function checkIn(interaction: DiscordInteraction, repository: D1PassportRe
   const rewards = await repository.claimUnlockedRewards(interaction.guild_id, user.id);
   for (const reward of rewards) await assignRewardRole(env, interaction.guild_id, user.id, reward);
   const rewardText = rewards.length ? `\n\n**REWARD UNLOCKED ${communityEmoji(emojis, "secretunlocked", "🎁")}** ${rewards.map((reward) => `${reward.emoji} **${reward.name}**`).join(", ")}` : "";
-  return message(`**STAMP EARNED ${communityEmoji(emojis, "stampearned", "🎉")}**\n${stamp.emoji} <@${user.id}> earned **${stamp.name}**!\n*${communityEmoji(emojis, "chaosapproved", "✅")} ${stamp.announcement || "Officially documented for absolutely no important reason."}*${rewardText}`);
+  return message(`**STAMP EARNED ${communityEmoji(emojis, "stampearned", "🎉")}**\n${stamp.emoji} <@${user.id}> earned **${stamp.name}**!\n*${communityEmoji(emojis, "chaosapproved", "✅")} ${approvalPhrase(stamp.announcement)}*${rewardText}`);
+}
+
+async function createActivity(interaction: DiscordInteraction, repository: D1PassportRepository, env: Env, emojis: CommunityEmojiMap): Promise<Response> {
+  if (!isModerator(interaction, env)) return message("Only moderators can create community activities. 🗃️", true);
+  if (!interaction.guild_id) return message("Activities can only be created inside a server.", true);
+  const title = String(option(interaction.data?.options, "title") || "").trim();
+  const prompt = String(option(interaction.data?.options, "prompt") || "").trim();
+  const channelId = String(option(interaction.data?.options, "channel") || "");
+  const rawPollOptions = String(option(interaction.data?.options, "poll-options") || "");
+  const answers = customPollAnswers(rawPollOptions);
+  if (!title || !prompt || !channelId) return message("The activity needs a title, prompt, and channel.", true);
+  if (answers === undefined) return message("Poll answers must contain 2–10 choices separated with `|`, with each answer no longer than 55 characters.", true);
+  const pollHours = Number(option(interaction.data?.options, "poll-hours") || 72);
+  const content = `**${communityEmoji(emojis, "chaos", "✨")} ${title}**\n${prompt}\n\n*Join whenever it works. This is an invitation, not homework.*`;
+  try {
+    const payload: Record<string, unknown> = { content, allowed_mentions: { parse: [] } };
+    if (answers.length) payload.poll = {
+      question: { text: title.slice(0, 300) },
+      answers: answers.map((answer) => ({ poll_media: { text: answer } })),
+      duration: pollHours,
+      allow_multiselect: true,
+      layout_type: 1,
+    };
+    const response = await discordRequest(env, `/channels/${channelId}/messages`, { method: "POST", body: JSON.stringify(payload) });
+    const posted = (await response.json()) as { id: string };
+    await repository.recordCustomEvent({ id: crypto.randomUUID(), guildId: interaction.guild_id, kind: "activity", title, description: prompt, channelId, messageId: posted.id, createdBy: interaction.member?.user?.id || interaction.user?.id || "unknown" });
+    return message(`✅ **${title}** is live in <#${channelId}>${answers.length ? ` with a ${pollHours}-hour poll` : ""}.\n[Jump to the activity](https://discord.com/channels/${interaction.guild_id}/${channelId}/${posted.id})`, true);
+  } catch (error) {
+    console.error(JSON.stringify({ event: "custom_activity_failed", guildId: interaction.guild_id, channelId, error: error instanceof Error ? error.message : String(error) }));
+    return message("I could not post that activity. Make sure the bot can **View Channel**, **Send Messages**, and—if you added choices—**Send Polls** in the selected channel.", true);
+  }
+}
+
+async function scheduleEvent(interaction: DiscordInteraction, repository: D1PassportRepository, env: Env): Promise<Response> {
+  if (!isModerator(interaction, env)) return message("Only moderators can add server calendar events. 🗃️", true);
+  if (!interaction.guild_id) return message("Calendar events can only be created inside a server.", true);
+  const name = String(option(interaction.data?.options, "name") || "").trim();
+  const date = String(option(interaction.data?.options, "date") || "");
+  const time = String(option(interaction.data?.options, "time") || "");
+  const duration = Number(option(interaction.data?.options, "duration"));
+  const location = String(option(interaction.data?.options, "location") || "").trim();
+  const description = String(option(interaction.data?.options, "description") || "A casual Seasons of Chaos community event. Join if and when it works for you.").trim();
+  const timezone = String(option(interaction.data?.options, "timezone") || "eastern") as EventTimezone;
+  const start = localEventTime(date, time, timezone);
+  if (!start) return message("I could not read that date or time. Use `YYYY-MM-DD` and 24-hour `HH:MM` (for example, `2026-10-10` and `19:30`).", true);
+  if (start.getTime() <= Date.now()) return message("That event start time needs to be in the future.", true);
+  const end = new Date(start.getTime() + duration * 60_000);
+  try {
+    const response = await discordRequest(env, `/guilds/${interaction.guild_id}/scheduled-events`, {
+      method: "POST",
+      headers: { "X-Audit-Log-Reason": encodeURIComponent(`Seasons of Chaos /schedule-event requested by ${interaction.member?.user?.id || interaction.user?.id || "unknown"}`) },
+      body: JSON.stringify({
+        name,
+        description,
+        privacy_level: 2,
+        scheduled_start_time: start.toISOString(),
+        scheduled_end_time: end.toISOString(),
+        entity_type: 3,
+        channel_id: null,
+        entity_metadata: { location },
+      }),
+    });
+    const created = (await response.json()) as DiscordScheduledEvent;
+    await repository.recordCustomEvent({ id: crypto.randomUUID(), guildId: interaction.guild_id, kind: "scheduled-event", title: name, description, discordEventId: created.id, startsAt: created.scheduled_start_time, createdBy: interaction.member?.user?.id || interaction.user?.id || "unknown" });
+    return message(`✅ **${name}** is now on the server calendar for <t:${Math.floor(start.getTime() / 1000)}:F>.\n[Open the Discord event](https://discord.com/events/${interaction.guild_id}/${created.id})`, true);
+  } catch (error) {
+    console.error(JSON.stringify({ event: "scheduled_event_create_failed", guildId: interaction.guild_id, error: error instanceof Error ? error.message : String(error) }));
+    return message("Discord blocked the calendar event. Give the bot **Create Events** permission, then try `/schedule-event` again.", true);
+  }
 }
 
 const FALL_REWARD_ROLES: Record<string, { name: string; color: number }> = {
@@ -193,6 +264,7 @@ function chaosHelp(emojis: CommunityEmojiMap): Response {
     { name: "Your collection", value: "Use **/passport** to see your stamps, **/stamps** to browse public achievements, and **/rewards** for reward progress." },
     { name: "Community emotes", value: "Use **/emotes** to browse or post one. Moderators can use **/add-emote** to copy one into this server's normal emote picker." },
     { name: "Fall event plan", value: "Use **/event-guide** for the September–January activities and the official no-pressure promise." },
+    { name: "Make your own", value: "Moderators can use **/create-activity** for a custom prompt or poll and **/schedule-event** to add a real server calendar event." },
     { name: "Secret achievements", value: "Some stamps stay hidden until the passport office decides you have caused enough seasonal activity." },
   ], footer: { text: "No leaderboard • No required participation • Every season stacks" } }]);
 }
@@ -304,6 +376,8 @@ async function handleInteraction(interaction: DiscordInteraction, env: Env): Pro
     case "event-guide": return eventGuide(interaction, repository, emojis);
     case "emotes": return emotesCommand(interaction, emojis);
     case "add-emote": return addEmote(interaction, env, emojis);
+    case "create-activity": return createActivity(interaction, repository, env, emojis);
+    case "schedule-event": return scheduleEvent(interaction, repository, env);
     default: return message("The passport office cannot find that form.", true);
   }
 }

@@ -1,7 +1,7 @@
 import type { StampCategory } from "./types.js";
 export interface DiscordUser { id: string; username: string; global_name?: string | null; avatar?: string | null; }
 export interface DiscordMember { nick?: string | null; roles?: string[]; permissions?: string; user?: DiscordUser; }
-export interface DiscordOption { name: string; type: number; value?: string | boolean; focused?: boolean; }
+export interface DiscordOption { name: string; type: number; value?: string | boolean | number; focused?: boolean; }
 export interface DiscordInteraction {
   type: number; guild_id?: string; member?: DiscordMember; user?: DiscordUser;
   data?: { name?: string; options?: DiscordOption[]; resolved?: { users?: Record<string, DiscordUser>; members?: Record<string, DiscordMember> } };
@@ -26,6 +26,7 @@ export interface AutomationChannelRow { guild_id: string; kind: AutomationKind; 
 export type AutomationKind = "activities" | "seasonal" | "photos" | "movie-night" | "game-night";
 export interface DiscordRole { id: string; name: string; position: number; permissions: string; managed: boolean; }
 export interface DiscordEmoji { id: string; name: string | null; animated?: boolean; available?: boolean; }
+export interface DiscordScheduledEvent { id: string; guild_id: string; name: string; scheduled_start_time: string; }
 export interface StampRow {
   slug: string; name: string; emoji: string; description: string; category: StampCategory;
   secret: number; active: number; role_reward_id: string | null; announcement: string | null;

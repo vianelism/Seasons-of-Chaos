@@ -69,4 +69,23 @@ export const commandData = [
     .setName("add-emote")
     .setDescription("Add a Seasons of Chaos emote to this server's emote picker.")
     .addStringOption((option) => option.setName("name").setDescription("Emote to add to this server").setAutocomplete(true).setRequired(true)),
+  new SlashCommandBuilder()
+    .setName("create-activity")
+    .setDescription("Post a custom community activity or poll (moderators only).")
+    .addStringOption((option) => option.setName("title").setDescription("Activity title").setMaxLength(100).setRequired(true))
+    .addStringOption((option) => option.setName("prompt").setDescription("What you want the group to do or answer").setMaxLength(1500).setRequired(true))
+    .addChannelOption((option) => option.setName("channel").setDescription("Where to post it").setRequired(true))
+    .addStringOption((option) => option.setName("poll-options").setDescription("Optional answers separated with | (2–10 answers)"))
+    .addIntegerOption((option) => option.setName("poll-hours").setDescription("How long the optional poll stays open").setMinValue(1).setMaxValue(168)),
+  new SlashCommandBuilder()
+    .setName("schedule-event")
+    .setDescription("Add a custom event to Discord's server Events calendar (moderators only).")
+    .addStringOption((option) => option.setName("name").setDescription("Event name").setMaxLength(100).setRequired(true))
+    .addStringOption((option) => option.setName("date").setDescription("Local date: YYYY-MM-DD").setRequired(true))
+    .addStringOption((option) => option.setName("time").setDescription("Local 24-hour time: HH:MM (example: 19:30)").setRequired(true))
+    .addIntegerOption((option) => option.setName("duration").setDescription("Duration in minutes").setMinValue(15).setMaxValue(1440).setRequired(true))
+    .addStringOption((option) => option.setName("location").setDescription("Voice channel, website, or other meeting place").setMaxLength(100).setRequired(true))
+    .addStringOption((option) => option.setName("timezone").setDescription("Timezone (default: Eastern)")
+      .addChoices({ name: "Eastern", value: "eastern" }, { name: "Central", value: "central" }, { name: "Mountain", value: "mountain" }, { name: "Pacific", value: "pacific" }))
+    .addStringOption((option) => option.setName("description").setDescription("Optional event details").setMaxLength(1000)),
 ].map((command) => command.toJSON());

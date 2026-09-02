@@ -54,6 +54,11 @@ export class D1PassportRepository {
     await this.db.prepare("INSERT OR IGNORE INTO activity_posts (guild_id,activity_id,channel_id,posted_at) VALUES (?,?,?,?)").bind(guildId, activityId, channelId, new Date().toISOString()).run();
   }
 
+  async recordCustomEvent(input: { id: string; guildId: string; kind: "activity" | "scheduled-event"; title: string; description: string; channelId?: string; messageId?: string; discordEventId?: string; startsAt?: string; createdBy: string }): Promise<void> {
+    await this.db.prepare("INSERT INTO custom_events (id,guild_id,kind,title,description,channel_id,discord_message_id,discord_event_id,starts_at,created_by,created_at) VALUES (?,?,?,?,?,?,?,?,?,?,?)")
+      .bind(input.id, input.guildId, input.kind, input.title, input.description, input.channelId ?? null, input.messageId ?? null, input.discordEventId ?? null, input.startsAt ?? null, input.createdBy, new Date().toISOString()).run();
+  }
+
   async findEventPollRun(guildId: string, eventId: string): Promise<EventPollRunRow | undefined> {
     return (await this.db.prepare("SELECT * FROM event_poll_runs WHERE guild_id=? AND event_id=?").bind(guildId, eventId).first<EventPollRunRow>()) ?? undefined;
   }

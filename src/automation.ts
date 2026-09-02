@@ -4,6 +4,7 @@ import type { Reward, StampDefinition } from "./types.js";
 import { communityEmoji, fetchCommunityEmojis, type CommunityEmojiMap } from "./community-emojis.js";
 import { FALL_2026_ACTIVITIES } from "./config/fall-2026-activities.js";
 import { EVENT_POLLS, EVENT_TIME_OPTIONS, type ScheduledEventPoll } from "./config/event-polls.js";
+import { approvalPhrase } from "./phrasing.js";
 
 const API = "https://discord.com/api/v10";
 
@@ -52,7 +53,7 @@ function mentionList(userIds: readonly string[]): string {
 
 export function stampAnnouncementContent(stamp: StampDefinition, userIds: readonly string[], emojis: CommunityEmojiMap): string {
   const recipients = [...new Set(userIds)];
-  return `**STAMP EARNED ${communityEmoji(emojis, "stampearned", "🎉")}**\n${stamp.emoji} ${mentionList(recipients)} earned **${stamp.name}**!\n*${communityEmoji(emojis, "chaosapproved", "✅")} ${stamp.announcement || "The passport office has approved this nonsense."}*`;
+  return `**STAMP EARNED ${communityEmoji(emojis, "stampearned", "🎉")}**\n${stamp.emoji} ${mentionList(recipients)} earned **${stamp.name}**!\n*${communityEmoji(emojis, "chaosapproved", "✅")} ${approvalPhrase(stamp.announcement)}*`;
 }
 
 async function announceStamp(env: Env, announcement: PendingStampAnnouncement): Promise<void> {
