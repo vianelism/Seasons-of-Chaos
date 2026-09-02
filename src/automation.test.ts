@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { automaticSlugs, pollWinners, secretActivitySlugs } from "./automation.js";
+import { automaticSlugs, pollWinners, secretActivitySlugs, stampAnnouncementContent } from "./automation.js";
+import type { StampDefinition } from "./types.js";
 import type { DiscordMessage } from "./cloudflare-types.js";
 
 function message(timestamp: string, attachments = 0): DiscordMessage {
@@ -50,5 +51,17 @@ describe("Fall 2026 automatic stamps", () => {
     expect(pollWinners(pollMessage)).toEqual({ winners: ["Friday", "Saturday"], votes: 3 });
     pollMessage.poll.results = { is_finalized: true, answer_counts: [] };
     expect(pollWinners(pollMessage)).toEqual({ winners: [], votes: 0 });
+  });
+
+  it("combines recipients of the same automatic stamp into one announcement", () => {
+    const stamp: StampDefinition = { slug: "fall-girl-era", name: "Fall Girl Era", emoji: "🍂", description: "Joined the kickoff.", category: "Fall", secret: false, active: true };
+    const content = stampAnnouncementContent(stamp, ["101", "202", "101", "303"], new Map());
+    expect(content).toContain("<@101>, <@202>, and <@303> earned **Fall Girl Era**!");
+    expect(content.match(/STAMP EARNED/g)).toHaveLength(1);
+  });
+
+  it("keeps a natural one-person automatic stamp announcement", () => {
+    const stamp: StampDefinition = { slug: "game-on", name: "Game On", emoji: "🎮", description: "Joined game night.", category: "Events", secret: false, active: true };
+    expect(stampAnnouncementContent(stamp, ["101"], new Map())).toContain("<@101> earned **Game On**!");
   });
 });

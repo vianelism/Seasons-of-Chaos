@@ -50,6 +50,7 @@ The Worker checks configured channels once per hour. Use `/setup-channel` once f
 - Participating across September, October, and November unlocks `I Was Here`.
 - `/check-in` handles activities the bot cannot infer reliably, such as a costume, seasonal treat, or gratitude post.
 - Reward thresholds are evaluated immediately after every automatic or self-service award.
+- Automatic awards earned during the same hourly run are grouped by stamp and announcement channel. If several members earn the same stamp, the bot posts one combined announcement instead of one message per member.
 
 The bot needs **View Channel**, **Read Message History**, and **Send Messages** in tracked channels. A reward with a Discord role also requires **Manage Roles**, and the bot role must sit above the reward role.
 

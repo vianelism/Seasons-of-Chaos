@@ -36,8 +36,30 @@ export function secretActivitySlugs(month: string, monthDays: number, activeMont
   return slugs;
 }
 
-async function announceStamp(env: Env, channelId: string, userId: string, stamp: StampDefinition, emojis: CommunityEmojiMap): Promise<void> {
-  await discordRequest(env, `/channels/${channelId}/messages`, { method: "POST", body: JSON.stringify({ content: `**STAMP EARNED ${communityEmoji(emojis, "stampearned", "🎉")}**\n${stamp.emoji} <@${userId}> earned **${stamp.name}**!\n*${communityEmoji(emojis, "chaosapproved", "✅")} ${stamp.announcement || "The passport office has approved this nonsense."}*` }) });
+type PendingStampAnnouncement = {
+  channelId: string;
+  stamp: StampDefinition;
+  userIds: Set<string>;
+  emojis: CommunityEmojiMap;
+};
+
+function mentionList(userIds: readonly string[]): string {
+  const mentions = userIds.map((userId) => `<@${userId}>`);
+  if (mentions.length <= 1) return mentions[0] ?? "Someone";
+  if (mentions.length === 2) return `${mentions[0]} and ${mentions[1]}`;
+  return `${mentions.slice(0, -1).join(", ")}, and ${mentions.at(-1)}`;
+}
+
+export function stampAnnouncementContent(stamp: StampDefinition, userIds: readonly string[], emojis: CommunityEmojiMap): string {
+  const recipients = [...new Set(userIds)];
+  return `**STAMP EARNED ${communityEmoji(emojis, "stampearned", "🎉")}**\n${stamp.emoji} ${mentionList(recipients)} earned **${stamp.name}**!\n*${communityEmoji(emojis, "chaosapproved", "✅")} ${stamp.announcement || "The passport office has approved this nonsense."}*`;
+}
+
+async function announceStamp(env: Env, announcement: PendingStampAnnouncement): Promise<void> {
+  await discordRequest(env, `/channels/${announcement.channelId}/messages`, {
+    method: "POST",
+    body: JSON.stringify({ content: stampAnnouncementContent(announcement.stamp, [...announcement.userIds], announcement.emojis) }),
+  });
 }
 
 export async function assignRewardRole(env: Env, guildId: string, userId: string, reward: Reward): Promise<void> {
@@ -49,7 +71,7 @@ async function announceReward(env: Env, guildId: string, channelId: string, user
   await discordRequest(env, `/channels/${channelId}/messages`, { method: "POST", body: JSON.stringify({ content: `**REWARD UNLOCKED ${communityEmoji(emojis, "secretunlocked", "🎁")}**\n${reward.emoji} <@${userId}> unlocked **${reward.name}**!\n*${communityEmoji(emojis, "chaos", "✨")} Mom chaos recognized. Completely prestigious.*` }) });
 }
 
-async function processMessage(env: Env, repository: D1PassportRepository, guildId: string, kind: AutomationKind, announcementChannelId: string, item: DiscordMessage, emojis: CommunityEmojiMap): Promise<number> {
+async function processMessage(env: Env, repository: D1PassportRepository, guildId: string, kind: AutomationKind, announcementChannelId: string, item: DiscordMessage, emojis: CommunityEmojiMap, announcements: Map<string, PendingStampAnnouncement>): Promise<number> {
   if (item.author.bot) return 0;
   let awarded = 0;
   const activity = await repository.recordActivityDay(guildId, item.author.id, item.timestamp);
@@ -60,7 +82,13 @@ async function processMessage(env: Env, repository: D1PassportRepository, guildI
     const stamp = await repository.findActiveStamp(slug);
     if (!stamp) continue;
     const created = await repository.award(guildId, item.author.id, item.member?.nick || item.author.global_name || item.author.username, slug, "automation");
-    if (created) { awarded += 1; await announceStamp(env, announcementChannelId, item.author.id, stamp, emojis); }
+    if (created) {
+      awarded += 1;
+      const key = `${announcementChannelId}:${stamp.slug}`;
+      const pending = announcements.get(key) ?? { channelId: announcementChannelId, stamp, userIds: new Set<string>(), emojis };
+      pending.userIds.add(item.author.id);
+      announcements.set(key, pending);
+    }
   }
   for (const reward of await repository.claimUnlockedRewards(guildId, item.author.id)) await announceReward(env, guildId, announcementChannelId, item.author.id, reward, emojis);
   return awarded;
@@ -192,6 +220,7 @@ export async function runAutomation(env: Env): Promise<void> {
   const emojiByGuild = new Map<string, CommunityEmojiMap>();
   for (const guildId of new Set(trackedChannels.map((row) => row.guild_id))) emojiByGuild.set(guildId, await fetchCommunityEmojis(env, guildId));
   let awards = 0;
+  const stampAnnouncements = new Map<string, PendingStampAnnouncement>();
   for (const channel of trackedChannels) {
     if (!channel.last_message_id) {
       try {
@@ -208,12 +237,21 @@ export async function runAutomation(env: Env): Promise<void> {
       const response = await discordRequest(env, `/channels/${channel.channel_id}/messages?${query}`);
       const messages = (await response.json()) as DiscordMessage[];
       messages.sort((a, b) => a.timestamp.localeCompare(b.timestamp));
-      for (const item of messages) awards += await processMessage(env, repository, channel.guild_id, channel.kind, announcementByGuild.get(channel.guild_id) || channel.channel_id, item, emojiByGuild.get(channel.guild_id) ?? new Map());
+      for (const item of messages) awards += await processMessage(env, repository, channel.guild_id, channel.kind, announcementByGuild.get(channel.guild_id) || channel.channel_id, item, emojiByGuild.get(channel.guild_id) ?? new Map(), stampAnnouncements);
       const newest = messages.at(-1);
       if (newest) await repository.updateChannelCursor(channel.guild_id, channel.kind, newest.id);
     } catch (error) {
       console.error(JSON.stringify({ event: "automation_channel_failed", guildId: channel.guild_id, kind: channel.kind, error: error instanceof Error ? error.message : String(error) }));
     }
   }
-  console.log(JSON.stringify({ event: "automation_complete", channels: channels.length, activityPosts, pollUpdates, awards }));
+  let announcementPosts = 0;
+  for (const announcement of stampAnnouncements.values()) {
+    try {
+      await announceStamp(env, announcement);
+      announcementPosts += 1;
+    } catch (error) {
+      console.error(JSON.stringify({ event: "stamp_announcement_failed", channelId: announcement.channelId, stamp: announcement.stamp.slug, recipients: announcement.userIds.size, error: error instanceof Error ? error.message : String(error) }));
+    }
+  }
+  console.log(JSON.stringify({ event: "automation_complete", channels: channels.length, activityPosts, pollUpdates, awards, announcementPosts }));
 }
